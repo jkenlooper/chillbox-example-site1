@@ -6,6 +6,7 @@ SHELL := sh
 
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 project_dir := $(dir $(mkfile_path))
+app_name := $(notdir $(patsubst %/,%,$(project_dir)))
 slugname := site1
 
 project_files := $(shell find . -type f -not -path './.git/*' -not -path './dist/*' | sort)
@@ -26,9 +27,7 @@ inspect.%:
 # Use $* to get the stem
 FORCE:
 
-# Chillbox will need the dist/artifact.tar.gz and dist/immutable.tar.gz when
-# deploying.
-objects := dist/artifact.tar.gz dist/immutable.tar.gz
+objects := .dist
 
 .PHONY: all
 all: $(objects) ## Default is to make all dist files
@@ -38,20 +37,18 @@ help: ## Show this help
 	@egrep -h '\s##\s' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: dist
-dist: dist/artifact.tar.gz dist/immutable.tar.gz ## Create tar.gz files for distribution
+dist: .dist ## Create dist/* files for distribution
 
-# Run the bin/artifact.sh script to create the dist/artifact.tar.gz file.
-dist/artifact.tar.gz: bin/artifact.sh
-	./$< $(abspath $@)
-
-# Run the bin/immutable.sh script to create the dist/immutable.tar.gz file.
-dist/immutable.tar.gz: bin/immutable.sh
-	./$< $(abspath $@)
+# Run the local-scripts/build.sh script to create the dist/* files.
+.dist: local-scripts/local-build.sh
+	./$< $(slugname) $(app_name) $(project_dir)
+	@touch $@
 
 .PHONY: start
 start: ## Start local development
-	./bin/local-start.sh
+	$(project_dir)/local-scripts/local-start.sh $(slugname) $(app_name) $(project_dir)
 
 .PHONY: clean
 clean: ## Remove files that were created
-	printf '%s\0' $(objects) | xargs -0 rm -f
+	printf '%s\0' $(objects) | xargs -0 rm -r -f
+	rm -rf dist/*

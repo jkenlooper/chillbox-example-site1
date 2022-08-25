@@ -1,4 +1,6 @@
 server {
+  listen ${SITE1_SERVER_PORT};
+
   # Use special wildcard server_name by prefixing with '.' so
   # [chillbox-hostname].${SITE1_SERVER_NAME} will also match.
   # https://nginx.org/en/docs/http/server_names.html
@@ -18,7 +20,9 @@ server {
     try_files $uri $uri/index.html @chill-static-example;
   }
   location @chill-static-example {
-    proxy_pass ${SITE1_CHILL_STATIC};
+    # Note that when the location is a named location (@name); the request URI
+    # is not stripped off before passing it to the proxy.
+    proxy_pass ${SITE1_CHILL_STATIC_EXAMPLE};
   }
 
   location /dynamic/ {
@@ -26,11 +30,15 @@ server {
     try_files $uri $uri/index.html @chill-dynamic-example;
   }
   location @chill-dynamic-example {
-    proxy_pass ${SITE1_CHILL_DYNAMIC};
+    # Note that when the location is a named location (@name); the request URI
+    # is not stripped off before passing it to the proxy.
+    proxy_pass ${SITE1_CHILL_DYNAMIC_EXAMPLE};
   }
 
-  location /api/ {
-    proxy_pass ${SITE1_API}/api/;
+  location /api/v1/ {
+    # The SITE1_API URI should end with a slash to strip off the request URI
+    # before passing it on to the proxy.
+    proxy_pass ${SITE1_API}/;
     proxy_redirect default;
   }
 
@@ -41,10 +49,7 @@ server {
 
   # Use the site version as part of the route for cache-busting.
   location /immutable-example/${SITE1_VERSION}/ {
-    # Set proxy_ssl_verify in case this request is being passed with https
-    proxy_ssl_verify on;
-
-    proxy_pass ${SITE1_IMMUTABLE__EXAMPLE};
+    proxy_pass ${SITE1_IMMUTABLE_EXAMPLE};
   }
 
   location ~* ^/(robots|humans).txt$ {
