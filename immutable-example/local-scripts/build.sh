@@ -8,5 +8,4 @@ dist_dir="$2"
 # dist directory.
 rm -rf "$dist_dir"
 mkdir -p "$dist_dir"
-cp "$src_dir/file1.txt" "$dist_dir/file1.txt"
-cp "$src_dir/file2.txt" "$dist_dir/file2.txt"
+find "$src_dir" -depth -mindepth 1 -maxdepth 1 -exec cp -Rf {} "$dist_dir/" \;

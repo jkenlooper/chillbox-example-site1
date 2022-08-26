@@ -10,8 +10,13 @@ test -d "$src_dir"
 dist_dir="$2"
 test -n "$dist_dir"
 
-
 "$script_dir/build.sh" "$src_dir" "$dist_dir"
 
-cd "$dist_dir"
-python3 -m http.server "$PORT"
+printf "\n%s\n" "
+# Warning
+#
+# http.server is not recommended for production. It only implements basic
+# security checks.
+"
+set -x
+python3 -m http.server --directory "$dist_dir" --bind "$BIND" "$PORT"

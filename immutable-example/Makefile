@@ -9,7 +9,7 @@ project_dir := $(dir $(mkfile_path))
 app_name := $(notdir $(patsubst %/,%,$(project_dir)))
 slugname := site1
 
-project_files := $(shell find . -type f -not -path './.git/*' -not -path './dist/*' | sort)
+project_files := $(shell find . -type f -not -path './.git/*' -not -path './dist/*' -not -path './.dist' | sort)
 
 # The version string includes the build metadata
 VERSION := $(shell cat VERSION)+$(shell cat $(project_files) | md5sum - | cut -d' ' -f1)
@@ -40,7 +40,7 @@ help: ## Show this help
 dist: .dist ## Create dist/* files for distribution
 
 # Run the local-scripts/build.sh script to create the dist/* files.
-.dist: local-scripts/local-build.sh
+.dist: local-scripts/local-build.sh $(project_files)
 	./$< $(slugname) $(app_name) $(project_dir)
 	@touch $@
 

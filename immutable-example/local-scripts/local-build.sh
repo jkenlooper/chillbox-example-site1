@@ -28,7 +28,8 @@ docker build \
   --target build \
   -t "$image_name" \
   "${project_dir}"
-docker run -d \
+docker run \
   --name "$container_name" \
-  "$image_name"
+  "$image_name" ls /build/dist
 docker cp "$container_name":/build/dist "$project_dir/"
+stop_and_rm_containers_silently

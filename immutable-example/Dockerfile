@@ -36,6 +36,9 @@ USER dev
 # Build the dist files inside the container
 RUN ./build.sh /build/src /build/dist
 
+# Need to bind to all addresses (0.0.0.0) as the default when within the site's
+# network.
+ENV BIND=0.0.0.0
 ENV PORT=8080
 EXPOSE 8080
 
@@ -50,4 +53,4 @@ FROM lipanski/docker-static-website:1.0.0@sha256:ea8516e6b2928c3c1b1c6737f7e32e0
 COPY --from=build /build/dist /home/static
 
 # Need a Cache-Control:max-age=0 header (thttpd option '-M 0') on all responses.
-CMD ["/thttpd", "-D", "-h", "0.0.0.0", "-p", "$PORT", "-d", "/home/static", "-u", "static", "-l", "-", "-M", "0"]
+CMD ["/thttpd", "-D", "-h", "$BIND", "-p", "$PORT", "-d", "/home/static", "-u", "static", "-l", "-", "-M", "0"]

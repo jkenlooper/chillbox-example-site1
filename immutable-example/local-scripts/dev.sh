@@ -42,6 +42,18 @@ cleanup() {
 }
 trap cleanup EXIT INT HUP TERM
 
-find "$src_dir" >> "$tmp_watch_files"
+watch_files() {
+  find "$src_dir" > "$tmp_watch_files"
+  cat "$tmp_watch_files" | entr -rdn "$script_dir/build-serve.sh" "$src_dir" "$dist_dir"
+}
 
-cat "$tmp_watch_files" | entr -rzdn "$script_dir/build-serve.sh" "$src_dir" "$dist_dir"
+set +o errexit
+while true; do
+  watch_files
+  exit_wf="$?"
+  if [ "$exit_wf" != "0" ]; then
+    watch_files
+  else
+    exit "$exit_wf"
+  fi
+done
