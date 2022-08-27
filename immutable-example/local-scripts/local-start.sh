@@ -2,10 +2,34 @@
 
 set -o errexit
 
-slugname="$1"
-appname="$2"
-project_dir="$3"
+script_name="$(basename "$0")"
 
+usage() {
+  cat <<HERE
+
+Local start script for development of immutable resources. Starts a container
+with a bind mount of the src directory.
+
+Usage:
+  $script_name -h
+  $script_name -s <slugname> -a <appname> -p <project_dir> [<cmd>]
+
+Options:
+  -h                  Show this help message.
+
+  -s <slugname>       Set the slugname.
+
+  -a <appname>        Set the appname.
+
+  -p <project_dir>    Set the project directory.
+
+Args:
+  <cmd>   Pass the optional command to the container instead of using default.
+
+HERE
+}
+
+build_and_run() {
 # For local development; this can be on the host network. The BIND is set to
 # localhost so only localhost can access. Switch it to 0.0.0.0 to allow anyone
 # else on that network to access.
@@ -41,4 +65,30 @@ docker run -i --tty \
   --env PORT="$IMMUTABLE_EXAMPLE_PORT" \
   --mount "type=bind,src=${project_dir}/src,dst=/build/src" \
   --name "$container_name" \
-  "$image_name"
+  "$image_name" "$@"
+}
+
+slugname=""
+appname=""
+project_dir=""
+
+while getopts "hs:a:p:" OPTION ; do
+  case "$OPTION" in
+    h) usage
+       exit 0 ;;
+    s) slugname=$OPTARG ;;
+    a) appname=$OPTARG ;;
+    p) project_dir=$OPTARG ;;
+    ?) usage
+       exit 1 ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+test -n "$slugname" || (usage && exit 1)
+test -n "$appname" || (usage && exit 1)
+test -n "$project_dir" || (usage && exit 1)
+project_dir="$(realpath "$project_dir")"
+test -d "$project_dir" || (echo "ERROR $script_name The project directory ($project_dir) must exist." >&2 && exit 1)
+
+build_and_run "$@"

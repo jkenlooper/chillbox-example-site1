@@ -3,14 +3,12 @@ set -o errexit
 
 script_dir="$(dirname "$(realpath "$0")")"
 
-src_dir="$1"
-test -n "$src_dir"
-test -d "$src_dir"
+test -n "$BUILD_SRC_DIR"
+test -d "$BUILD_SRC_DIR"
 
-dist_dir="$2"
-test -n "$dist_dir"
+test -n "$BUILD_DIST_DIR"
 
-"$script_dir/build.sh" "$src_dir" "$dist_dir"
+"$script_dir/build.sh"
 
 printf "\n%s\n" "
 # Warning
@@ -19,4 +17,4 @@ printf "\n%s\n" "
 # security checks.
 "
 set -x
-python3 -m http.server --directory "$dist_dir" --bind "$BIND" "$PORT"
+python3 -m http.server --directory "$BUILD_DIST_DIR" --bind "$BIND" "$PORT"

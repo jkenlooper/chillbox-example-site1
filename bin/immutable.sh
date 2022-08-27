@@ -14,9 +14,8 @@ tmpdir="$(mktemp -d)"
 mkdir -p "$tmpdir/$slugname"
 
 mkdir -p "$tmpdir/$slugname/immutable-example"
-# make -C "$projectdir/immutable-example/src/file1.txt"
-cp "$projectdir/immutable-example/src/file1.txt" "$tmpdir/$slugname/immutable-example/file1.txt"
-cp "$projectdir/immutable-example/src/file2.txt" "$tmpdir/$slugname/immutable-example/file2.txt"
+make -C "$projectdir/immutable-example"
+find "$projectdir/immutable-example/dist/" -depth -mindepth 1 -maxdepth 1 -exec cp -R {} "$tmpdir/$slugname/immutable-example/" \;
 
 archive_dir="$(dirname "$archive")"
 mkdir -p "$archive_dir"

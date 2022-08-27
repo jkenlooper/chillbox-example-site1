@@ -46,7 +46,7 @@ dist: .dist ## Create dist/* files for distribution
 
 .PHONY: start
 start: ## Start local development
-	$(project_dir)/local-scripts/local-start.sh $(slugname) $(app_name) $(project_dir)
+	$(project_dir)/local-scripts/local-start.sh -s $(slugname) -a $(app_name) -p $(project_dir)
 
 .PHONY: clean
 clean: ## Remove files that were created

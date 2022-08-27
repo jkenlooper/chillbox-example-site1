@@ -7,14 +7,20 @@ script_dir="$(dirname "$(realpath "$0")")"
 usage() {
   cat <<HEREUSAGE
 
-Watch for changes in the provided directory; build and serve on changes.
+Watch for changes in the BUILD_SRC_DIR directory; build and serve the
+BUILD_DIST_DIR directory on changes.
 
 Usage:
   $script_name -h
-  $script_name <src_dir>
+  $script_name
 
 Options:
   -h                  Show this help message.
+
+Environment Variables:
+  BUILD_SRC_DIR=/build/src
+  BUILD_DIST_DIR=/build/dist
+
 
 HEREUSAGE
 }
@@ -29,12 +35,10 @@ while getopts "h" OPTION ; do
 done
 shift $((OPTIND - 1))
 
-src_dir="$1"
-test -n "$src_dir"
-test -d "$src_dir"
+test -n "$BUILD_SRC_DIR"
+test -d "$BUILD_SRC_DIR"
 
-dist_dir="$2"
-test -n "$dist_dir"
+test -n "$BUILD_DIST_DIR"
 
 tmp_watch_files="$(mktemp)"
 cleanup() {
@@ -43,8 +47,8 @@ cleanup() {
 trap cleanup EXIT INT HUP TERM
 
 watch_files() {
-  find "$src_dir" > "$tmp_watch_files"
-  cat "$tmp_watch_files" | entr -rdn "$script_dir/build-serve.sh" "$src_dir" "$dist_dir"
+  find "$BUILD_SRC_DIR" > "$tmp_watch_files"
+  cat "$tmp_watch_files" | entr -rdn "$script_dir/build-serve.sh"
 }
 
 set +o errexit

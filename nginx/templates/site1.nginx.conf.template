@@ -47,8 +47,10 @@ server {
     root /srv/site1/;
   }
 
-  # Use the site version as part of the route for cache-busting.
-  location /immutable-example/${SITE1_VERSION}/ {
+  # Use arbitrary 'v1' version as part of the route for cache-busting on client
+  # side. The URI is not passed to the proxy because the SITE1_IMMUTABLE_EXAMPLE
+  # ends with a slash.
+  location /immutable-example/v1/ {
     proxy_pass ${SITE1_IMMUTABLE_EXAMPLE};
   }
 

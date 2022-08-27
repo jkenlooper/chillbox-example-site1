@@ -31,10 +31,13 @@ COPY --chown=dev:dev ./local-scripts/build.sh /build/build.sh
 # Only the src/ directory is copied to the container.
 COPY --chown=dev:dev src /build/src
 
+ENV BUILD_SRC_DIR=/build/src
+ENV BUILD_DIST_DIR=/build/dist
+
 USER dev
 
 # Build the dist files inside the container
-RUN ./build.sh /build/src /build/dist
+RUN ./build.sh
 
 # Need to bind to all addresses (0.0.0.0) as the default when within the site's
 # network.
@@ -42,9 +45,10 @@ ENV BIND=0.0.0.0
 ENV PORT=8080
 EXPOSE 8080
 
+
 # Default command is to run the dev.sh script to watch files and build and serve
 # them.
-CMD ["./dev.sh", "/build/src", "/build/dist"]
+CMD ["./dev.sh"]
 
 ### Serve
 FROM lipanski/docker-static-website:1.0.0@sha256:ea8516e6b2928c3c1b1c6737f7e32e03b10a04f978080592e61c3dbe2871ff1a
