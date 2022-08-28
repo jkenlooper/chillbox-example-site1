@@ -36,7 +36,6 @@ build_and_run() {
 IMMUTABLE_EXAMPLE_PORT="${IMMUTABLE_EXAMPLE_PORT:-8080}"
 IMMUTABLE_EXAMPLE_BIND="${IMMUTABLE_EXAMPLE_BIND:-127.0.0.1}"
 
-script_dir="$(dirname "$(realpath "$0")")"
 script_filename="$(basename "$0")"
 script_name="$(basename "$0" ".sh")"
 image_name="$slugname-$appname-$script_name"
@@ -85,9 +84,9 @@ while getopts "hs:a:p:" OPTION ; do
 done
 shift $((OPTIND - 1))
 
-test -n "$slugname" || (usage && exit 1)
-test -n "$appname" || (usage && exit 1)
-test -n "$project_dir" || (usage && exit 1)
+test -n "$slugname" || (echo "ERROR $script_name: No slugname set." >&2 && usage && exit 1)
+test -n "$appname" || (echo "ERROR $script_name: No appname set." >&2 && usage && exit 1)
+test -n "$project_dir" || (echo "ERROR $script_name: No project_dir set." >&2 && usage && exit 1)
 project_dir="$(realpath "$project_dir")"
 test -d "$project_dir" || (echo "ERROR $script_name The project directory ($project_dir) must exist." >&2 && exit 1)
 

@@ -134,6 +134,13 @@ if [ -f /etc/nginx/conf.d/site1.nginx.conf ]; then
   cp /etc/nginx/conf.d/site1.nginx.conf /etc/nginx/conf.d/site1.nginx.conf.bak
 fi
 envsubst '$SITE1_SERVER_NAME $SITE1_SERVER_PORT $SITE1_PROXY_INTERCEPT_ERRORS $SITE1_VERSION $SITE1_PROXY_CACHE_VALID $SITE1_API $SITE1_CHILL_STATIC_EXAMPLE $SITE1_CHILL_DYNAMIC_EXAMPLE $SITE1_IMMUTABLE_EXAMPLE' < /build/templates/site1.nginx.conf.template > /etc/nginx/conf.d/site1.nginx.conf
+
+if [ -n "$(grep '${.\+}' /etc/nginx/conf.d/site1.nginx.conf || printf "")" ]; then
+  echo "ERROR $script_name Not all env variables were replaced from /build/templates/site1.nginx.conf.template"
+  grep -H -n '${.\+}' /etc/nginx/conf.d/site1.nginx.conf
+  exit 1
+fi
+
 chown -R nginx:nginx /etc/nginx/conf.d/site1.nginx.conf
 if nginx -t; then
     echo "INFO $script_name Passed test of nginx configuration."

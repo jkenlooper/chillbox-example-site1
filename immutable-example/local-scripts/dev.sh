@@ -35,10 +35,24 @@ while getopts "h" OPTION ; do
 done
 shift $((OPTIND - 1))
 
-test -n "$BUILD_SRC_DIR"
-test -d "$BUILD_SRC_DIR"
+check_for_required_commands() {
+  for required_command in \
+    realpath \
+    entr \
+    ; do
+    command -v "$required_command" > /dev/null || (echo "ERROR $script_name: Requires '$required_command' command." >&2 && exit 1)
+  done
+}
 
-test -n "$BUILD_DIST_DIR"
+check_env_vars() {
+  test -n "$BUILD_SRC_DIR" || (echo "ERROR $script_name: No BUILD_SRC_DIR environment variable defined" >&2 && usage && exit 1)
+  test -d "$BUILD_SRC_DIR" || (echo "ERROR $script_name: The BUILD_SRC_DIR environment variable is not set to a directory" >&2 && usage && exit 1)
+
+  test -n "$BUILD_DIST_DIR" || (echo "ERROR $script_name: No BUILD_DIST_DIR environment variable defined" >&2 && usage && exit 1)
+}
+
+check_for_required_commands
+check_env_vars
 
 tmp_watch_files="$(mktemp)"
 cleanup() {
@@ -51,13 +65,19 @@ watch_files() {
   cat "$tmp_watch_files" | entr -rdn "$script_dir/build-serve.sh"
 }
 
-set +o errexit
 while true; do
+  set +o errexit
   watch_files
   exit_wf="$?"
-  if [ "$exit_wf" != "0" ]; then
-    watch_files
+  set -o errexit
+  if [ "$exit_wf" = "0" ]; then
+    echo "INFO $script_name: Exiting."
+    exit "$exit_wf"
+  elif [ "$exit_wf" = "1" ] || [ "$exit_wf" = "2" ]; then
+    echo "INFO $script_name: waiting 2 seconds before watching files again. Hit Ctrl-C to exit."
+    sleep 2
   else
+    echo "INFO $script_name: Unhandled entr exit status."
     exit "$exit_wf"
   fi
 done

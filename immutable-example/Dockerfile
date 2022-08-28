@@ -24,9 +24,9 @@ apk add --no-cache \
   entr
 FILEWATCH_SUPPORT
 
-COPY --chown=dev:dev ./local-scripts/dev.sh /build/dev.sh
-COPY --chown=dev:dev ./local-scripts/build-serve.sh /build/build-serve.sh
-COPY --chown=dev:dev ./local-scripts/build.sh /build/build.sh
+COPY --chown=dev:dev local-scripts/dev.sh /build/dev.sh
+COPY --chown=dev:dev local-scripts/build-serve.sh /build/build-serve.sh
+COPY --chown=dev:dev local-scripts/build.sh /build/build.sh
 
 # Only the src/ directory is copied to the container.
 COPY --chown=dev:dev src /build/src
