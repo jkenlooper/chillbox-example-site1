@@ -46,7 +46,8 @@ dist/artifact.tar.gz: bin/artifact.sh
 
 # Run the bin/immutable.sh script to create the dist/immutable.tar.gz file.
 dist/immutable.tar.gz: bin/immutable.sh
-	./$< $(abspath $@)
+	./$< -s $(slugname) -t $(abspath $@) \
+		$(project_dir)immutable-example
 
 .PHONY: start
 start: ## Start local development
