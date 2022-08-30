@@ -38,13 +38,18 @@ while getopts "h" OPTION ; do
 done
 shift $((OPTIND - 1))
 
+has_python3="$(command -v python3 || printf "")"
+has_thttpd="$(command -v thttpd || printf "")"
 check_for_required_commands() {
   for required_command in \
     realpath \
-    python3 \
     ; do
     command -v "$required_command" > /dev/null || (echo "ERROR $script_name: Requires '$required_command' command." >&2 && exit "$invalid_errcode")
   done
+  if [ -z "$has_python3" ] && [ -z "$has_thttpd" ]; then
+    echo "ERROR $script_name: Requires either 'python3' or 'thttpd' command." >&2
+    exit "$invalid_errcode"
+  fi
 }
 
 check_env_vars() {
@@ -61,11 +66,19 @@ check_env_vars
 
 "$script_dir/build.sh"
 
-printf "\n%s\n" "
-# Warning
-#
-# http.server is not recommended for production. It only implements basic
-# security checks.
-"
-set -x
-python3 -m http.server --directory "$BUILD_DIST_DIR" --bind "$BIND" "$PORT"
+if [ -n "$has_thttpd" ]; then
+  # Need a Cache-Control:max-age=0 header (thttpd option '-M 0') on all responses.
+  thttpd -D -h "$BIND" -p "$PORT" -d "$BUILD_DIST_DIR" -u dev -l - -M 0
+elif [ -n "$has_python3" ]; then
+  printf "\n%s\n" "
+  # Warning
+  #
+  # http.server is not recommended for production. It only implements basic
+  # security checks.
+  "
+  set -x
+  python3 -m http.server --directory "$BUILD_DIST_DIR" --bind "$BIND" "$PORT"
+else
+  echo "ERROR $script_name: Unhandled condition." >&2
+  exit 8
+fi

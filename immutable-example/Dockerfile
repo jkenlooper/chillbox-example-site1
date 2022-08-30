@@ -19,7 +19,7 @@ RUN <<FILEWATCH_SUPPORT
 set -o errexit
 apk update
 apk add --no-cache \
-  python3 \
+  thttpd \
   gettext \
   entr
 FILEWATCH_SUPPORT

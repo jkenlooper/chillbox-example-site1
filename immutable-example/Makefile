@@ -12,7 +12,7 @@ slugname := site1
 project_files := $(shell find . -type f -not -path './.git/*' -not -path './dist/*' -not -path './.dist' | sort)
 
 # The hash string could be used for cache-busting.
-# HASH := $(shell cat $(project_files) | md5sum - | cut -d' ' -f1)
+HASH := $(shell cat $(project_files) | md5sum - | cut -d' ' -f1)
 
 # For debugging what is set in variables.
 inspect.%:

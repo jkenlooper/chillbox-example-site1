@@ -101,12 +101,15 @@ docker run -d \
   --name "$slugname-nginx" \
   --network chillboxnet \
   --mount "type=bind,src=${project_dir}/nginx/templates,dst=/build/templates" \
-  -e SITE1_SERVER_NAME="localhost" \
-  -e SITE1_SERVER_PORT="$app_port" \
-  -e SITE1_IMMUTABLE_EXAMPLE="http://$slugname-immutable-example:8080/" \
-  -e SITE1_API="http://$slugname-api:8100" \
-  -e SITE1_CHILL_STATIC_EXAMPLE="http://$slugname-chill-static-example:5000" \
-  -e SITE1_CHILL_DYNAMIC_EXAMPLE="http://$slugname-chill-dynamic-example:5001" \
+  -e SLUGNAME="site1" \
+  -e SERVER_NAME="localhost" \
+  -e SERVER_PORT="$app_port" \
+  -e IMMUTABLE_EXAMPLE="http://$slugname-immutable-example:8080/" \
+  -e IMMUTABLE_EXAMPLE_HASH="" \
+  -e IMMUTABLE_BUCKET_DOMAIN_NAME="http://chillbox-minio:9000" \
+  -e API="http://$slugname-api:8100" \
+  -e CHILL_STATIC_EXAMPLE="http://$slugname-chill-static-example:5000" \
+  -e CHILL_DYNAMIC_EXAMPLE="http://$slugname-chill-dynamic-example:5001" \
   "$slugname-nginx"
 
 sleep 2

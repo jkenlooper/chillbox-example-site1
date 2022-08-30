@@ -41,9 +41,11 @@ create_archive() {
     directory_full_path="$(realpath "$directory")"
     test -d "$directory_full_path" || (echo "ERROR $script_name: The provided directory ($directory) is not a directory at $directory_full_path" >&2 && exit 1)
     directory_basename="$(basename "$directory_full_path")"
-    mkdir -p "$tmpdir/$slugname/$directory_basename"
+    hash_string="$(make --silent -C "$directory_full_path" inspect.HASH)"
+    mkdir -p "$tmpdir/$slugname/$directory_basename/$hash_string"
+    printf "%s" "$hash_string" > "$tmpdir/$slugname/$directory_basename/hash.txt"
     make -C "$directory_full_path"
-    find "$directory_full_path/dist/" -depth -mindepth 1 -maxdepth 1 -exec cp -R {} "$tmpdir/$slugname/$directory_basename" \;
+    find "$directory_full_path/dist/" -depth -mindepth 1 -maxdepth 1 -exec cp -R {} "$tmpdir/$slugname/$directory_basename/$hash_string/" \;
   done
 
   archive_dir="$(dirname "$archive")"

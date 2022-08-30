@@ -5,7 +5,7 @@
 # docker image ls --digests alpine
 FROM nginx:1.22.0-alpine@sha256:98a1e37840fdf90f57df595dae8e27a198278170323744e13464b7f3a927562e
 
-ENV SITE1_SERVER_NAME=localhost
+ENV SERVER_NAME=localhost
 ENV SITE1_SERVER_PORT=80
 ENV SITE1_VERSION=0
 ENV SITE1_API=http://localhost:9000
@@ -15,46 +15,11 @@ ENV SITE1_IMMUTABLE_EXAMPLE=http://localhost:8080/
 
 WORKDIR /build
 
-RUN <<DEFAULT_NGINX_CONF
-# Use a minimal NGINX configuration for just this local container.
-set -o errexit
-cat <<'HERE' > /etc/nginx/conf.d/default.conf
-server {
-    listen 80 default_server;
-    server_name "";
-    return 444;
-}
-HERE
-chown nginx:nginx /etc/nginx/conf.d/default.conf
-
-cat <<'HERE' > /etc/nginx/nginx.conf
-user  nginx;
-error_log  stderr info;
-pid        /var/run/nginx.pid;
-events {
-    worker_connections  512;
-}
-http {
-    include       /etc/nginx/mime.types;
-    default_type  application/octet-stream;
-    # root should always be set if access_log is.
-    root /usr/share/nginx/html;
-    access_log  /var/log/nginx/access.log  combined;
-    sendfile        on;
-    tcp_nopush on;
-    tcp_nodelay on;
-    resolver 8.8.8.8 8.8.4.4 valid=300s;
-    resolver_timeout 5s;
-    gzip  on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-    include /etc/nginx/conf.d/*.conf;
-}
-HERE
-chown nginx:nginx /etc/nginx/nginx.conf
-
-DEFAULT_NGINX_CONF
+COPY --chown=nginx:nginx default.nginx.conf /etc/nginx/conf.d/default.conf
+COPY --chown=nginx:nginx nginx.conf /etc/nginx/nginx.conf
 
 COPY --chown=nginx:nginx root /srv/site1/root
+
 RUN <<INSTALL
 # Install directories for site1
 set -o errexit
@@ -133,7 +98,7 @@ script_name="$(basename "$0")"
 if [ -f /etc/nginx/conf.d/site1.nginx.conf ]; then
   cp /etc/nginx/conf.d/site1.nginx.conf /etc/nginx/conf.d/site1.nginx.conf.bak
 fi
-envsubst '$SITE1_SERVER_NAME $SITE1_SERVER_PORT $SITE1_PROXY_INTERCEPT_ERRORS $SITE1_VERSION $SITE1_PROXY_CACHE_VALID $SITE1_API $SITE1_CHILL_STATIC_EXAMPLE $SITE1_CHILL_DYNAMIC_EXAMPLE $SITE1_IMMUTABLE_EXAMPLE' < /build/templates/site1.nginx.conf.template > /etc/nginx/conf.d/site1.nginx.conf
+envsubst '$SLUGNAME $SERVER_NAME $SERVER_PORT $PROXY_INTERCEPT_ERRORS $VERSION $PROXY_CACHE_VALID $API $CHILL_STATIC_EXAMPLE $CHILL_DYNAMIC_EXAMPLE $IMMUTABLE_EXAMPLE $IMMUTABLE_EXAMPLE_HASH $IMMUTABLE_BUCKET_DOMAIN_NAME' < /build/templates/site1.nginx.conf.template > /etc/nginx/conf.d/site1.nginx.conf
 
 if [ -n "$(grep '${.\+}' /etc/nginx/conf.d/site1.nginx.conf || printf "")" ]; then
   echo "ERROR $script_name Not all env variables were replaced from /build/templates/site1.nginx.conf.template"
