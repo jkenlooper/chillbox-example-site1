@@ -48,10 +48,13 @@ server {
     root /srv/site1/;
   }
 
-  # Use arbitrary 'v1' version as part of the route for cache-busting on client
-  # side. The URI is not passed to the proxy because the IMMUTABLE_EXAMPLE
-  # ends with a slash.
-  location /immutable-example/ {
+  # Use arbitrary 'v1' as part of the route for cache-busting on client side.
+  # The matching request URI up to the HASH (/immutable-example/v1/HASH/) is not
+  # passed to the proxy because the IMMUTABLE_EXAMPLE should end with a slash.
+  # The route to the proxy doesn't include the '/immutable-example/v1/' string;
+  # the URI in IMMUTABLE_EXAMPLE should include it's own route that ends with
+  # the hash string.
+  location ${IMMUTABLE_EXAMPLE_URI} {
     proxy_cache var_cache_nginx;
     add_header X-Proxy-Cache $upstream_cache_status;
     proxy_pass ${IMMUTABLE_EXAMPLE};

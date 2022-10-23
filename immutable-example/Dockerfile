@@ -20,6 +20,7 @@ set -o errexit
 apk update
 apk add --no-cache \
   thttpd \
+  tree \
   gettext \
   entr
 FILEWATCH_SUPPORT

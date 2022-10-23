@@ -60,8 +60,13 @@ check_env_vars
 build_it() {
   # For this example it is only copying the files from the src directory to the
   # dist directory.
-  rm -rf "$BUILD_DIST_DIR"
-  mkdir -p "$BUILD_DIST_DIR"
+  if [ -d "$BUILD_DIST_DIR" ]; then
+    # Start with a fresh dist directory.
+    find "$BUILD_DIST_DIR" -depth -mindepth 1 -type f -delete
+    find "$BUILD_DIST_DIR" -depth -mindepth 1 -type d -empty -delete
+  else
+    mkdir -p "$BUILD_DIST_DIR"
+  fi
   find "$BUILD_SRC_DIR" -depth -mindepth 1 -maxdepth 1 -exec cp -Rf {} "$BUILD_DIST_DIR/" \;
 }
 build_it

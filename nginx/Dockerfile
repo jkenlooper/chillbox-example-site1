@@ -5,6 +5,8 @@
 # docker image ls --digests alpine
 FROM nginx:1.22.0-alpine@sha256:98a1e37840fdf90f57df595dae8e27a198278170323744e13464b7f3a927562e
 
+ENV VERSION="notset"
+ENV IMMUTABLE_EXAMPLE_URI="/notset/"
 ENV SERVER_NAME=localhost
 ENV SITE1_SERVER_PORT=80
 ENV SITE1_VERSION=0
@@ -98,7 +100,7 @@ script_name="$(basename "$0")"
 if [ -f /etc/nginx/conf.d/site1.nginx.conf ]; then
   cp /etc/nginx/conf.d/site1.nginx.conf /etc/nginx/conf.d/site1.nginx.conf.bak
 fi
-envsubst '$SLUGNAME $SERVER_NAME $SERVER_PORT $PROXY_INTERCEPT_ERRORS $VERSION $PROXY_CACHE_VALID $API $CHILL_STATIC_EXAMPLE $CHILL_DYNAMIC_EXAMPLE $IMMUTABLE_EXAMPLE $IMMUTABLE_EXAMPLE_HASH $IMMUTABLE_BUCKET_DOMAIN_NAME' < /build/templates/site1.nginx.conf.template > /etc/nginx/conf.d/site1.nginx.conf
+envsubst '$SLUGNAME $SERVER_NAME $SERVER_PORT $PROXY_INTERCEPT_ERRORS $VERSION $PROXY_CACHE_VALID $API $CHILL_STATIC_EXAMPLE $CHILL_DYNAMIC_EXAMPLE $IMMUTABLE_EXAMPLE $IMMUTABLE_EXAMPLE_URI $IMMUTABLE_BUCKET_DOMAIN_NAME' < /build/templates/site1.nginx.conf.template > /etc/nginx/conf.d/site1.nginx.conf
 
 if [ -n "$(grep '${.\+}' /etc/nginx/conf.d/site1.nginx.conf || printf "")" ]; then
   echo "ERROR $script_name Not all env variables were replaced from /build/templates/site1.nginx.conf.template"

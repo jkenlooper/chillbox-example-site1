@@ -6,5 +6,12 @@
     <body>
 
         <p>{{ homepage_content }}</p>
+
+        TODO How to reference an immutable resource from the immutable-example ?
+        <pre>
+        IMMUTABLE_EXAMPLE = <!-- echo var="IMMUTABLE_EXAMPLE" default="" -->
+        IMMUTABLE_EXAMPLE = <!-- include virtual="/site1/immutable-example/hash.txt" -->
+        </pre>
+        <a href="{{ config.IMMUTABLE_EXAMPLE_URI }}file1.txt">file1.txt</a>
     </body>
 </html>

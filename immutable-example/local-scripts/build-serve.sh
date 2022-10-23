@@ -42,6 +42,7 @@ has_python3="$(command -v python3 || printf "")"
 has_thttpd="$(command -v thttpd || printf "")"
 check_for_required_commands() {
   for required_command in \
+    tree \
     realpath \
     ; do
     command -v "$required_command" > /dev/null || (echo "ERROR $script_name: Requires '$required_command' command." >&2 && exit "$invalid_errcode")
@@ -66,9 +67,11 @@ check_env_vars
 
 "$script_dir/build.sh"
 
+tree -a "$BUILD_DIST_DIR"
 if [ -n "$has_thttpd" ]; then
   # Need a Cache-Control:max-age=0 header (thttpd option '-M 0') on all responses.
-  thttpd -D -h "$BIND" -p "$PORT" -d "$BUILD_DIST_DIR" -u dev -l - -M 0
+  set -x
+  thttpd -D -h "$BIND" -p "$PORT" -d "$BUILD_DIST_DIR" -u dev -l - -M 1
 elif [ -n "$has_python3" ]; then
   printf "\n%s\n" "
   # Warning

@@ -37,6 +37,9 @@ else
   "${project_dir}/local-s3/local-chillbox.sh"
 fi
 
+site_version_string="$(make --silent -C "$project_dir" inspect.VERSION)"
+immutable_example_hash="$(make --silent -C "$project_dir/immutable-example/" inspect.HASH)"
+
 # The ports on these do not need to be exposed since nginx is in front of them.
 docker image rm "$slugname-immutable-example" > /dev/null 2>&1 || printf ""
 DOCKER_BUILDKIT=1 docker build \
@@ -75,6 +78,7 @@ docker run -d \
   -e CHILL_MEDIA_PATH="/media/" \
   -e CHILL_THEME_STATIC_PATH="/theme/0/" \
   -e CHILL_DESIGN_TOKENS_HOST="/design-tokens/0/" \
+  -e IMMUTABLE_EXAMPLE_URI="/immutable-example/v1/fake-hash/" \
   "$slugname-chill-static-example"
 
 docker image rm "$slugname-chill-dynamic-example" > /dev/null 2>&1 || printf ""
@@ -102,10 +106,11 @@ docker run -d \
   --network chillboxnet \
   --mount "type=bind,src=${project_dir}/nginx/templates,dst=/build/templates" \
   -e SLUGNAME="site1" \
+  -e VERSION="$site_version_string" \
+  -e IMMUTABLE_EXAMPLE_URI="/immutable-example/v1/fake-hash/" \
   -e SERVER_NAME="localhost" \
   -e SERVER_PORT="$app_port" \
   -e IMMUTABLE_EXAMPLE="http://$slugname-immutable-example:8080/" \
-  -e IMMUTABLE_EXAMPLE_HASH="" \
   -e IMMUTABLE_BUCKET_DOMAIN_NAME="http://chillbox-minio:9000" \
   -e API="http://$slugname-api:8100" \
   -e CHILL_STATIC_EXAMPLE="http://$slugname-chill-static-example:5000" \
