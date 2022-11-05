@@ -1,17 +1,16 @@
 <!doctype html>
 <html>
     <head>
-        <title>Chill</title>
+        <title>Chill Static</title>
     </head>
     <body>
 
         <p>{{ homepage_content }}</p>
 
-        TODO How to reference an immutable resource from the immutable-example ?
-        <pre>
-        IMMUTABLE_EXAMPLE = <!-- echo var="IMMUTABLE_EXAMPLE" default="" -->
-        IMMUTABLE_EXAMPLE = <!-- include virtual="/site1/immutable-example/hash.txt" -->
-        </pre>
+        <nav>
         <a href="{{ config.IMMUTABLE_EXAMPLE_URI }}file1.txt">file1.txt</a>
+        <a href="{{ config.CHILL_DYNAMIC_PUBLIC_URL_PREFIX }}">/dynamic</a>
+        <a href="/api/healthcheck">/api/healthcheck</a>
+        </nav>
     </body>
 </html>

@@ -6,57 +6,33 @@ server {
   # https://nginx.org/en/docs/http/server_names.html
   server_name .${SERVER_NAME};
 
-  root /srv/site1/root;
-  access_log /var/log/nginx/site1/access.log;
-  error_log /var/log/nginx/site1/error.log;
+  root /srv/${SLUGNAME}/root;
+  access_log /var/log/nginx/${SLUGNAME}/access.log;
+  error_log /var/log/nginx/${SLUGNAME}/error.log;
 
   location / {
     limit_except GET {
       deny all;
     }
-    # The frozen directory doesn't exist when developing or when not serving the
-    # frozen site. Fallback on the @chill-static-example proxy for dynamic sites.
-    root /usr/local/src/site1/chill-static-example/frozen;
-    try_files $uri $uri/index.html @chill-static-example;
-  }
-  location @chill-static-example {
-    # Note that when the location is a named location (@name); the request URI
-    # is not stripped off before passing it to the proxy.
-    ssi on;
-    proxy_pass ${CHILL_STATIC_EXAMPLE};
+    root /usr/local/src/${SLUGNAME}/chill-static-example/frozen;
+    try_files $uri $uri/index.html =404;
   }
 
-  location /dynamic/ {
-    root /usr/local/src/site1/chill-dynamic-example/frozen;
-    try_files $uri $uri/index.html @chill-dynamic-example;
-  }
-  location @chill-dynamic-example {
-    # Note that when the location is a named location (@name); the request URI
-    # is not stripped off before passing it to the proxy.
-    proxy_pass ${CHILL_DYNAMIC_EXAMPLE};
+  location ${CHILL_DYNAMIC_PUBLIC_URL_PREFIX}/ {
+    proxy_pass ${CHILL_DYNAMIC};
   }
 
-  location /api/v1/ {
-    # The API URI should end with a slash to strip off the request URI
-    # before passing it on to the proxy.
+  location /api/ {
     proxy_pass ${API}/;
     proxy_redirect default;
   }
 
   # For SSL cert validation
   location /.well-known/ {
-    root /srv/site1/;
+    root /srv/${SLUGNAME}/;
   }
 
-  # Use arbitrary 'v1' as part of the route for cache-busting on client side.
-  # The matching request URI up to the HASH (/immutable-example/v1/HASH/) is not
-  # passed to the proxy because the IMMUTABLE_EXAMPLE should end with a slash.
-  # The route to the proxy doesn't include the '/immutable-example/v1/' string;
-  # the URI in IMMUTABLE_EXAMPLE should include it's own route that ends with
-  # the hash string.
   location ${IMMUTABLE_EXAMPLE_URI} {
-    proxy_cache var_cache_nginx;
-    add_header X-Proxy-Cache $upstream_cache_status;
     proxy_pass ${IMMUTABLE_EXAMPLE};
   }
 
