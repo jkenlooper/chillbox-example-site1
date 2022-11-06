@@ -5,15 +5,38 @@
 # docker image ls --digests alpine
 FROM nginx:1.22.0-alpine@sha256:98a1e37840fdf90f57df595dae8e27a198278170323744e13464b7f3a927562e
 
-ENV VERSION="notset"
-ENV IMMUTABLE_EXAMPLE_URI="/notset/"
+# These env vars match with what chillbox provides.
+ENV CHILLBOX_SERVER_NAME=chillbox.test
+ENV CHILLBOX_SERVER_PORT=80
+ENV S3_ENDPOINT_URL=http://chillbox-minio:9000
+ENV IMMUTABLE_BUCKET_NAME=chillboximmutable
+ENV IMMUTABLE_BUCKET_DOMAIN_NAME=http://chillbox-minio:9000
+ENV ARTIFACT_BUCKET_NAME=chillboxartifact
+ENV SLUGNAME=site1
+ENV VERSION=0
 ENV SERVER_NAME=localhost
-ENV SITE1_SERVER_PORT=80
-ENV SITE1_VERSION=0
-ENV SITE1_API=http://localhost:9000
-ENV SITE1_CHILL_STATIC_EXAMPLE=http://localhost:5000/
-ENV SITE1_CHILL_DYNAMIC_EXAMPLE=http://localhost:5001/
-ENV SITE1_IMMUTABLE_EXAMPLE=http://localhost:8080/
+ENV SERVER_PORT=80
+
+# These env vars match with what the site.json provides.
+ENV API_PATH=/api/
+ENV API_PORT=8100
+ENV API_URL=http://localhost:$API_PORT/
+
+ENV CHILL_STATIC_EXAMPLE_TRY_FILES_LAST_PARAM=@chill-static-example
+ENV CHILL_STATIC_EXAMPLE_PATH=/
+ENV CHILL_STATIC_EXAMPLE_PORT=5000
+ENV CHILL_STATIC_EXAMPLE_URL=http://localhost:$CHILL_STATIC_EXAMPLE_PORT/
+
+ENV CHILL_DYNAMIC_EXAMPLE_PATH=/dynamic/
+ENV CHILL_DYNAMIC_EXAMPLE_PORT=5001
+ENV CHILL_DYNAMIC_EXAMPLE_URL=http://localhost:$CHILL_DYNAMIC_EXAMPLE_PORT/
+
+# The IMMUTABLE_EXAMPLE_PATH should not be passed to the proxy because it ends
+# with a slash ('/') character. The proxy url IMMUTABLE_EXAMPLE_URL will typically
+# have it's own route that ends with a hash string and a slash character. When developing locally this
+# IMMUTABLE_EXAMPLE_URL is set to the localhost server with a specific port.
+ENV IMMUTABLE_EXAMPLE_PATH="/this-should-always-end-with-a-slash/"
+ENV IMMUTABLE_EXAMPLE_URL=http://localhost:8080/
 
 WORKDIR /build
 
@@ -100,7 +123,43 @@ script_name="$(basename "$0")"
 if [ -f /etc/nginx/conf.d/site1.nginx.conf ]; then
   cp /etc/nginx/conf.d/site1.nginx.conf /etc/nginx/conf.d/site1.nginx.conf.bak
 fi
-envsubst '$SLUGNAME $SERVER_NAME $SERVER_PORT $PROXY_INTERCEPT_ERRORS $VERSION $PROXY_CACHE_VALID $API $CHILL_STATIC_EXAMPLE $CHILL_DYNAMIC_EXAMPLE $IMMUTABLE_EXAMPLE $IMMUTABLE_EXAMPLE_URI $IMMUTABLE_BUCKET_DOMAIN_NAME' < /build/templates/site1.nginx.conf.template > /etc/nginx/conf.d/site1.nginx.conf
+
+env_names_to_expand_via_chillbox="
+CHILLBOX_SERVER_NAME
+CHILLBOX_SERVER_PORT
+S3_ENDPOINT_URL
+IMMUTABLE_BUCKET_NAME
+IMMUTABLE_BUCKET_DOMAIN_NAME
+ARTIFACT_BUCKET_NAME
+SLUGNAME
+VERSION
+SERVER_NAME
+SERVER_PORT
+"
+env_names_to_expand_via_site_json="
+CHILL_STATIC_EXAMPLE_TRY_FILES_LAST_PARAM
+CHILL_STATIC_EXAMPLE_PATH
+CHILL_STATIC_EXAMPLE_URL
+CHILL_STATIC_EXAMPLE_PORT
+CHILL_DYNAMIC_EXAMPLE_PATH
+CHILL_DYNAMIC_EXAMPLE_URL
+CHILL_DYNAMIC_EXAMPLE_PORT
+API_PATH
+API_URL
+API_PORT
+IMMUTABLE_EXAMPLE_PATH
+IMMUTABLE_EXAMPLE_URL
+IMMUTABLE_EXAMPLE_HASH
+"
+env_names_to_expand="$env_names_to_expand_via_chillbox $env_names_to_expand_via_site_json"
+env_names="$(printf "%s" "$env_names_to_expand" | sed 's/./$&/; /\S/!d' | xargs)"
+# Expand and check that all environment variables have been set and have values
+# to avoid replacing with empty strings.
+for env_var in $env_names; do
+  check_var="$(eval "printf \"%s\" \"$env_var\"")"
+  test -n "$check_var" || (echo "ERROR The environment variable has no value $env_var" >&2 && exit 1)
+done
+envsubst "$env_names" < /build/templates/site1.nginx.conf.template > /etc/nginx/conf.d/site1.nginx.conf
 
 if [ -n "$(grep '${.\+}' /etc/nginx/conf.d/site1.nginx.conf || printf "")" ]; then
   echo "ERROR $script_name Not all env variables were replaced from /build/templates/site1.nginx.conf.template"

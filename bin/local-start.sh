@@ -10,6 +10,10 @@ app_port=8088
 NODE_ENV=${NODE_ENV-"development"}
 script_dir="$(dirname "$(realpath "$0")")"
 project_dir="$(dirname "${script_dir}")"
+IMMUTABLE_EXAMPLE_PORT=8080
+CHILL_STATIC_EXAMPLE_PORT=5000
+CHILL_DYNAMIC_EXAMPLE_PORT=5001
+API_PORT="8100"
 
 stop_and_rm_containers_silently () {
   # A fresh start of the containers are needed. Hide any error output and such
@@ -50,6 +54,7 @@ build_start_immutable_example() {
       "${project_dir}/immutable-example"
   docker run -d \
     --network chillboxnet \
+    -e PORT="$IMMUTABLE_EXAMPLE_PORT" \
     --mount "type=bind,src=${project_dir}/immutable-example/src,dst=/build/src" \
     --name "$slugname-immutable-example" "$slugname-immutable-example"
 }
@@ -81,10 +86,11 @@ build_start_chill_static_example() {
     --mount "type=bind,src=${project_dir}/chill-static-example/documents,dst=/home/chill/app/documents" \
     --mount "type=bind,src=${project_dir}/chill-static-example/queries,dst=/home/chill/app/queries" \
     --mount "type=bind,src=${project_dir}/chill-static-example/templates,dst=/home/chill/app/templates" \
+    -e CHILL_PORT="$CHILL_STATIC_EXAMPLE_PORT" \
     -e CHILL_MEDIA_PATH="/media/" \
     -e CHILL_THEME_STATIC_PATH="/theme/0/" \
     -e CHILL_DESIGN_TOKENS_HOST="/design-tokens/0/" \
-    -e IMMUTABLE_EXAMPLE_URI="/immutable-example/v1/fake-hash/" \
+    -e IMMUTABLE_EXAMPLE_PATH="/immutable-example/v1/fake-hash/" \
     "$slugname-chill-static-example"
 }
 
@@ -115,16 +121,19 @@ build_start_nginx() {
     --name "$slugname-nginx" \
     --network chillboxnet \
     --mount "type=bind,src=${project_dir}/nginx/templates,dst=/build/templates" \
-    -e SLUGNAME="site1" \
+    -e SLUGNAME="$slugname" \
     -e VERSION="$site_version_string" \
-    -e IMMUTABLE_EXAMPLE_URI="/immutable-example/v1/fake-hash/" \
-    -e SERVER_NAME="localhost" \
     -e SERVER_PORT="$app_port" \
-    -e IMMUTABLE_EXAMPLE="http://$slugname-immutable-example:8080/" \
     -e IMMUTABLE_BUCKET_DOMAIN_NAME="http://chillbox-minio:9000" \
-    -e API="http://$slugname-api:8100" \
-    -e CHILL_STATIC_EXAMPLE="http://$slugname-chill-static-example:5000" \
-    -e CHILL_DYNAMIC_EXAMPLE="http://$slugname-chill-dynamic-example:5001" \
+    -e IMMUTABLE_EXAMPLE_URL="http://$slugname-immutable-example:8080/" \
+    -e IMMUTABLE_EXAMPLE_PATH="/immutable-example/v1/fake-hash/" \
+    -e API_PORT="$API_PORT" \
+    -e API_URL="http://$slugname-api:$API_PORT/" \
+    -e CHILL_STATIC_EXAMPLE_TRY_FILES_LAST_PARAM="@chill-static-example" \
+    -e CHILL_STATIC_EXAMPLE_PORT="$CHILL_STATIC_EXAMPLE_PORT" \
+    -e CHILL_STATIC_EXAMPLE_URL="http://$slugname-chill-static-example:$CHILL_STATIC_EXAMPLE_PORT/" \
+    -e CHILL_DYNAMIC_EXAMPLE_PORT="$CHILL_DYNAMIC_EXAMPLE_PORT" \
+    -e CHILL_DYNAMIC_EXAMPLE_URL="http://$slugname-chill-dynamic-example:$CHILL_DYNAMIC_EXAMPLE_PORT/" \
     "$slugname-nginx"
 }
 
