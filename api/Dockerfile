@@ -79,9 +79,12 @@ ENV FLASK_APP=site1_api.app
 ENV FLASK_ENV=production
 ENV SECRETS_CONFIG="/var/lib/chillbox-shared-secrets/site1/api.cfg"
 
-ENV SERVER_NAME=""
+ENV API_HOST="0.0.0.0"
+ENV API_PORT="8100"
+
 ENV HOST="0.0.0.0"
-ENV PORT="8100"
+ENV PORT=$API_PORT
+ENV SERVER_NAME="$API_HOST:$API_PORT"
 
 WORKDIR /usr/local/src/app/
 
@@ -121,8 +124,5 @@ chmod +x flask-run.sh
 FILEWATCH_SUPPORT
 
 USER dev
-
-# Default port for application is 8100
-EXPOSE 8100
 
 CMD ["/usr/local/src/app-venv/bin/start"]

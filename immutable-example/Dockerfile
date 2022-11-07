@@ -43,9 +43,8 @@ RUN ./build.sh
 # Need to bind to all addresses (0.0.0.0) as the default when within the site's
 # network.
 ENV BIND=0.0.0.0
-ENV PORT=8080
-EXPOSE 8080
-
+ENV IMMUTABLE_EXAMPLE_PORT=8080
+ENV PORT=$IMMUTABLE_EXAMPLE_PORT
 
 # Default command is to run the dev.sh script to watch files and build and serve
 # them.

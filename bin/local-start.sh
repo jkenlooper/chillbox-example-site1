@@ -10,10 +10,56 @@ app_port=8088
 NODE_ENV=${NODE_ENV-"development"}
 script_dir="$(dirname "$(realpath "$0")")"
 project_dir="$(dirname "${script_dir}")"
-IMMUTABLE_EXAMPLE_PORT=8080
+site_version_string="$(make --silent -C "$project_dir" inspect.VERSION)"
+immutable_example_hash="$(make --silent -C "$project_dir/immutable-example/" inspect.HASH)"
+immutable_example_port=8080
+tmp_site_env_vars="$(mktemp)"
+trap 'rm -f "$tmp_site_env_vars"' EXIT
+
+cat <<MEOW > "$tmp_site_env_vars"
+ARTIFACT_BUCKET_NAME=chillboxartifact
+AWS_PROFILE=chillbox_object_storage
+CHILLBOX_ARTIFACT=not-applicable
+CHILLBOX_SERVER_NAME=chillbox.test
+CHILLBOX_SERVER_PORT=80
+IMMUTABLE_BUCKET_DOMAIN_NAME=http://chillbox-minio:9000
+IMMUTABLE_BUCKET_NAME=chillboximmutable
+LETS_ENCRYPT_SERVER=letsencrypt_test
+S3_ENDPOINT_URL=http://chillbox-minio:9000
+
+# Not setting server_name to allow it to be set differently in each Dockerfile
+# if needed.
+#SERVER_NAME=
+
+SERVER_PORT=$app_port
+SITES_ARTIFACT=not-applicable
+SLUGNAME=$slugname
+TECH_EMAIL=me@local.test
+VERSION=$site_version_string
+
+
+CHILL_STATIC_EXAMPLE_TRY_FILES_LAST_PARAM=@chill-static-example
+CHILL_STATIC_EXAMPLE_PATH=/
 CHILL_STATIC_EXAMPLE_PORT=5000
+CHILL_STATIC_EXAMPLE_SCHEME=http
+CHILL_STATIC_EXAMPLE_HOST=$slugname-chill-static-example
+
+CHILL_DYNAMIC_EXAMPLE_PATH=/dynamic/
 CHILL_DYNAMIC_EXAMPLE_PORT=5001
-API_PORT="8100"
+CHILL_DYNAMIC_EXAMPLE_SCHEME=http
+CHILL_DYNAMIC_EXAMPLE_HOST=$slugname-chill-dynamic-example
+
+API_PATH=/api/
+API_PORT=8100
+API_SCHEME=http
+API_HOST=$slugname-api
+
+IMMUTABLE_EXAMPLE_HASH=$immutable_example_hash
+IMMUTABLE_EXAMPLE_PATH=/immutable-example/v1/$immutable_example_hash/
+IMMUTABLE_EXAMPLE_PORT=$immutable_example_port
+IMMUTABLE_EXAMPLE_URL=http://$slugname-immutable-example:$immutable_example_port/
+
+MEOW
 
 stop_and_rm_containers_silently () {
   # A fresh start of the containers are needed. Hide any error output and such
@@ -41,8 +87,6 @@ else
   "${project_dir}/local-s3/local-chillbox.sh"
 fi
 
-site_version_string="$(make --silent -C "$project_dir" inspect.VERSION)"
-immutable_example_hash="$(make --silent -C "$project_dir/immutable-example/" inspect.HASH)"
 
 # The ports on these do not need to be exposed since nginx is in front of them.
 
@@ -54,7 +98,7 @@ build_start_immutable_example() {
       "${project_dir}/immutable-example"
   docker run -d \
     --network chillboxnet \
-    -e PORT="$IMMUTABLE_EXAMPLE_PORT" \
+    --env-file "$tmp_site_env_vars" \
     --mount "type=bind,src=${project_dir}/immutable-example/src,dst=/build/src" \
     --name "$slugname-immutable-example" "$slugname-immutable-example"
 }
@@ -69,7 +113,7 @@ build_start_api() {
   docker run -d --tty \
     --name "$slugname-api" \
     --user root \
-    -e SERVER_NAME="site1-api:8100" \
+    --env-file "$tmp_site_env_vars" \
     --network chillboxnet \
     --mount "type=bind,src=${project_dir}/api/src/site1_api,dst=/usr/local/src/app/src/site1_api,readonly" \
     $slugname-api ./flask-run.sh
@@ -83,14 +127,10 @@ build_start_chill_static_example() {
   docker run -d \
     --name "$slugname-chill-static-example" \
     --network chillboxnet \
+    --env-file "$tmp_site_env_vars" \
     --mount "type=bind,src=${project_dir}/chill-static-example/documents,dst=/home/chill/app/documents" \
     --mount "type=bind,src=${project_dir}/chill-static-example/queries,dst=/home/chill/app/queries" \
     --mount "type=bind,src=${project_dir}/chill-static-example/templates,dst=/home/chill/app/templates" \
-    -e CHILL_PORT="$CHILL_STATIC_EXAMPLE_PORT" \
-    -e CHILL_MEDIA_PATH="/media/" \
-    -e CHILL_THEME_STATIC_PATH="/theme/0/" \
-    -e CHILL_DESIGN_TOKENS_HOST="/design-tokens/0/" \
-    -e IMMUTABLE_EXAMPLE_PATH="/immutable-example/v1/fake-hash/" \
     "$slugname-chill-static-example"
 }
 
@@ -102,12 +142,10 @@ build_start_chill_dynamic_example() {
   docker run -d \
     --name "$slugname-chill-dynamic-example" \
     --network chillboxnet \
+    --env-file "$tmp_site_env_vars" \
     --mount "type=bind,src=${project_dir}/chill-dynamic-example/documents,dst=/home/chill/app/documents" \
     --mount "type=bind,src=${project_dir}/chill-dynamic-example/queries,dst=/home/chill/app/queries" \
     --mount "type=bind,src=${project_dir}/chill-dynamic-example/templates,dst=/home/chill/app/templates" \
-    -e CHILL_MEDIA_PATH="/media/" \
-    -e CHILL_THEME_STATIC_PATH="/theme/0/" \
-    -e CHILL_DESIGN_TOKENS_HOST="/design-tokens/0/" \
     "$slugname-chill-dynamic-example"
 }
 
@@ -120,20 +158,8 @@ build_start_nginx() {
     -p "$app_port:$app_port" \
     --name "$slugname-nginx" \
     --network chillboxnet \
+    --env-file "$tmp_site_env_vars" \
     --mount "type=bind,src=${project_dir}/nginx/templates,dst=/build/templates" \
-    -e SLUGNAME="$slugname" \
-    -e VERSION="$site_version_string" \
-    -e SERVER_PORT="$app_port" \
-    -e IMMUTABLE_BUCKET_DOMAIN_NAME="http://chillbox-minio:9000" \
-    -e IMMUTABLE_EXAMPLE_URL="http://$slugname-immutable-example:8080/" \
-    -e IMMUTABLE_EXAMPLE_PATH="/immutable-example/v1/fake-hash/" \
-    -e API_PORT="$API_PORT" \
-    -e API_URL="http://$slugname-api:$API_PORT/" \
-    -e CHILL_STATIC_EXAMPLE_TRY_FILES_LAST_PARAM="@chill-static-example" \
-    -e CHILL_STATIC_EXAMPLE_PORT="$CHILL_STATIC_EXAMPLE_PORT" \
-    -e CHILL_STATIC_EXAMPLE_URL="http://$slugname-chill-static-example:$CHILL_STATIC_EXAMPLE_PORT/" \
-    -e CHILL_DYNAMIC_EXAMPLE_PORT="$CHILL_DYNAMIC_EXAMPLE_PORT" \
-    -e CHILL_DYNAMIC_EXAMPLE_URL="http://$slugname-chill-dynamic-example:$CHILL_DYNAMIC_EXAMPLE_PORT/" \
     "$slugname-nginx"
 }
 
