@@ -77,14 +77,13 @@ APP_DEPENDENCIES
 
 ENV FLASK_APP=site1_api.app
 ENV FLASK_ENV=production
+
+# TODO set secrets for local
 ENV SECRETS_CONFIG="/var/lib/chillbox-shared-secrets/site1/api.cfg"
 
-ENV API_HOST="0.0.0.0"
-ENV API_PORT="8100"
+ENV API_PORT=8100
 
-ENV HOST="0.0.0.0"
-ENV PORT=$API_PORT
-ENV SERVER_NAME="$API_HOST:$API_PORT"
+ENV SERVER_NAME="localhost"
 
 WORKDIR /usr/local/src/app/
 
@@ -108,9 +107,11 @@ fi
 export FLASK_ENV=development
 
 /usr/local/src/app-venv/bin/flask init-db
+
+# Setting host to 0.0.0.0 (externally visible) to work with docker network.
 /usr/local/src/app-venv/bin/flask run \
-  --port ${PORT} \
-  --host ${HOST}
+  --port "$API_PORT" \
+  --host "0.0.0.0"
 
 # /usr/local/src/app-venv/bin/pytest
 

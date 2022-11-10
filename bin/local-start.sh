@@ -13,10 +13,9 @@ project_dir="$(dirname "${script_dir}")"
 site_version_string="$(make --silent -C "$project_dir" inspect.VERSION)"
 immutable_example_hash="$(make --silent -C "$project_dir/immutable-example/" inspect.HASH)"
 immutable_example_port=8080
-tmp_site_env_vars="$(mktemp)"
-trap 'rm -f "$tmp_site_env_vars"' EXIT
+site_env_vars_file="$project_dir/.local-start-site-env-vars"
 
-cat <<MEOW > "$tmp_site_env_vars"
+cat <<MEOW > "$site_env_vars_file"
 ARTIFACT_BUCKET_NAME=chillboxartifact
 AWS_PROFILE=chillbox_object_storage
 CHILLBOX_ARTIFACT=not-applicable
@@ -26,40 +25,33 @@ IMMUTABLE_BUCKET_DOMAIN_NAME=http://chillbox-minio:9000
 IMMUTABLE_BUCKET_NAME=chillboximmutable
 LETS_ENCRYPT_SERVER=letsencrypt_test
 S3_ENDPOINT_URL=http://chillbox-minio:9000
-
 # Not setting server_name to allow it to be set differently in each Dockerfile
 # if needed.
 #SERVER_NAME=
-
 SERVER_PORT=$app_port
 SITES_ARTIFACT=not-applicable
 SLUGNAME=$slugname
 TECH_EMAIL=me@local.test
 VERSION=$site_version_string
-
-
 CHILL_STATIC_EXAMPLE_TRY_FILES_LAST_PARAM=@chill-static-example
 CHILL_STATIC_EXAMPLE_PATH=/
 CHILL_STATIC_EXAMPLE_PORT=5000
 CHILL_STATIC_EXAMPLE_SCHEME=http
 CHILL_STATIC_EXAMPLE_HOST=$slugname-chill-static-example
-
 CHILL_DYNAMIC_EXAMPLE_PATH=/dynamic/
 CHILL_DYNAMIC_EXAMPLE_PORT=5001
 CHILL_DYNAMIC_EXAMPLE_SCHEME=http
 CHILL_DYNAMIC_EXAMPLE_HOST=$slugname-chill-dynamic-example
-
 API_PATH=/api/
 API_PORT=8100
 API_SCHEME=http
 API_HOST=$slugname-api
-
 IMMUTABLE_EXAMPLE_HASH=$immutable_example_hash
 IMMUTABLE_EXAMPLE_PATH=/immutable-example/v1/$immutable_example_hash/
 IMMUTABLE_EXAMPLE_PORT=$immutable_example_port
 IMMUTABLE_EXAMPLE_URL=http://$slugname-immutable-example:$immutable_example_port/
-
 MEOW
+. "$site_env_vars_file"
 
 stop_and_rm_containers_silently () {
   # A fresh start of the containers are needed. Hide any error output and such
@@ -98,7 +90,7 @@ build_start_immutable_example() {
       "${project_dir}/immutable-example"
   docker run -d \
     --network chillboxnet \
-    --env-file "$tmp_site_env_vars" \
+    --env-file "$site_env_vars_file" \
     --mount "type=bind,src=${project_dir}/immutable-example/src,dst=/build/src" \
     --name "$slugname-immutable-example" "$slugname-immutable-example"
 }
@@ -113,7 +105,9 @@ build_start_api() {
   docker run -d --tty \
     --name "$slugname-api" \
     --user root \
-    --env-file "$tmp_site_env_vars" \
+    --env-file "$site_env_vars_file" \
+    -e HOST="localhost" \
+    -e PORT="$API_PORT" \
     --network chillboxnet \
     --mount "type=bind,src=${project_dir}/api/src/site1_api,dst=/usr/local/src/app/src/site1_api,readonly" \
     $slugname-api ./flask-run.sh
@@ -127,7 +121,7 @@ build_start_chill_static_example() {
   docker run -d \
     --name "$slugname-chill-static-example" \
     --network chillboxnet \
-    --env-file "$tmp_site_env_vars" \
+    --env-file "$site_env_vars_file" \
     --mount "type=bind,src=${project_dir}/chill-static-example/documents,dst=/home/chill/app/documents" \
     --mount "type=bind,src=${project_dir}/chill-static-example/queries,dst=/home/chill/app/queries" \
     --mount "type=bind,src=${project_dir}/chill-static-example/templates,dst=/home/chill/app/templates" \
@@ -142,7 +136,7 @@ build_start_chill_dynamic_example() {
   docker run -d \
     --name "$slugname-chill-dynamic-example" \
     --network chillboxnet \
-    --env-file "$tmp_site_env_vars" \
+    --env-file "$site_env_vars_file" \
     --mount "type=bind,src=${project_dir}/chill-dynamic-example/documents,dst=/home/chill/app/documents" \
     --mount "type=bind,src=${project_dir}/chill-dynamic-example/queries,dst=/home/chill/app/queries" \
     --mount "type=bind,src=${project_dir}/chill-dynamic-example/templates,dst=/home/chill/app/templates" \
@@ -158,7 +152,7 @@ build_start_nginx() {
     -p "$app_port:$app_port" \
     --name "$slugname-nginx" \
     --network chillboxnet \
-    --env-file "$tmp_site_env_vars" \
+    --env-file "$site_env_vars_file" \
     --mount "type=bind,src=${project_dir}/nginx/templates,dst=/build/templates" \
     "$slugname-nginx"
 }
