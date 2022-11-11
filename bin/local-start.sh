@@ -157,6 +157,27 @@ build_start_nginx() {
     "$slugname-nginx"
 }
 
+# TODO Prompt to update or create the local secrets file for the api service to
+# use. Should create a new asymmetric key pair if no key pair exists yet. The
+# secret env file should be encrypted and saved locally. Only the private key
+# will be on the container, but since the container is ephemeral it will also be
+# encrypted with a public gpg key from the host.
+
+# 1) Add a public gpg key for a local container to use.
+# 2) Include public gpg key as a bind mount or save it on a volume which can be
+# mounted.
+# 3) Create a new asymmetric key on the local container that will use the
+# secret.
+# 4) Encrypt the new asymmetric secret key with the gpg public key.
+# 5) Save the new asymmetric public key in a volume.
+# 6) Save the encrypted asymmetric private key in a volume.
+# 7)
+#
+# 1) ...Or just don't care about local secrets as they shouldn't be considered
+# sensitive. Bind mount the config file that is in plaintext.
+# Should the script run the api-bridge.Dockerfile?
+#
+
 build_start_immutable_example
 build_start_api
 build_start_chill_static_example
