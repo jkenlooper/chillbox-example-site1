@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 set -o errexit
 
@@ -10,10 +10,22 @@ app_port=8088
 NODE_ENV=${NODE_ENV-"development"}
 script_dir="$(dirname "$(realpath "$0")")"
 project_dir="$(dirname "${script_dir}")"
+script_name="$(basename "$0")"
 site_version_string="$(make --silent -C "$project_dir" inspect.VERSION)"
 immutable_example_hash="$(make --silent -C "$project_dir/immutable-example/" inspect.HASH)"
 immutable_example_port=8080
 site_env_vars_file="$project_dir/.local-start-site-env-vars"
+
+project_dir_basename="$(basename "$project_dir")"
+project_name_hash="$(printf "%s" "$project_dir" | md5sum | cut -d' ' -f1)"
+test "${#project_name_hash}" -eq "32" || (echo "ERROR $script_name: Failed to create a project name hash from the project dir ($project_dir)" && exit 1)
+
+# Storing the local development secrets in the user data directory for this site
+# depending on the project directory path at the time.
+# https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+site_data_home="${XDG_DATA_HOME:-"$HOME/.local/share"}/$project_dir_basename-$slugname--$project_name_hash"
+
+not_encrypted_secrets_dir="$site_data_home/not-encrypted-secrets"
 
 cat <<MEOW > "$site_env_vars_file"
 ARTIFACT_BUCKET_NAME=chillboxartifact
@@ -53,23 +65,9 @@ IMMUTABLE_EXAMPLE_URL=http://$slugname-immutable-example:$immutable_example_port
 MEOW
 . "$site_env_vars_file"
 
-stop_and_rm_containers_silently () {
-  # A fresh start of the containers are needed. Hide any error output and such
-  # from this as it is irrelevant.
-  docker stop --time 1 $slugname-chill-dynamic-example > /dev/null 2>&1 &
-  docker stop --time 1 $slugname-api > /dev/null 2>&1 &
-  docker stop --time 1 $slugname-chill-static-example > /dev/null 2>&1 &
-  docker stop --time 1 $slugname-immutable-example > /dev/null 2>&1 &
-  docker stop --time 1 $slugname-nginx > /dev/null 2>&1 &
-  wait
+. "$script_dir/utils.sh"
 
-  docker container rm $slugname-chill-dynamic-example > /dev/null 2>&1 || printf ''
-  docker container rm $slugname-api > /dev/null 2>&1 || printf ''
-  docker container rm $slugname-chill-static-example > /dev/null 2>&1 || printf ''
-  docker container rm $slugname-immutable-example > /dev/null 2>&1 || printf ''
-  docker container rm $slugname-nginx > /dev/null 2>&1 || printf ''
-}
-stop_and_rm_containers_silently
+stop_and_rm_containers_silently "$slugname"
 
 chillbox_minio_state="$(docker inspect --format '{{.State.Running}}' chillbox-minio || printf "false")"
 chillbox_local_shared_secrets_state="$(docker inspect --format '{{.State.Running}}' chillbox-local-shared-secrets || printf "false")"
@@ -108,8 +106,10 @@ build_start_api() {
     --env-file "$site_env_vars_file" \
     -e HOST="localhost" \
     -e PORT="$API_PORT" \
+    -e SECRETS_CONFIG="/var/lib/local-secrets/site1/api/api-bridge.secrets.cfg" \
     --network chillboxnet \
     --mount "type=bind,src=${project_dir}/api/src/site1_api,dst=/usr/local/src/app/src/site1_api,readonly" \
+    --mount "type=bind,src=$not_encrypted_secrets_dir/api/api-bridge.secrets.cfg,dst=/var/lib/local-secrets/site1/api/api-bridge.secrets.cfg,readonly" \
     $slugname-api ./flask-run.sh
 }
 
@@ -157,26 +157,9 @@ build_start_nginx() {
     "$slugname-nginx"
 }
 
-# TODO Prompt to update or create the local secrets file for the api service to
-# use. Should create a new asymmetric key pair if no key pair exists yet. The
-# secret env file should be encrypted and saved locally. Only the private key
-# will be on the container, but since the container is ephemeral it will also be
-# encrypted with a public gpg key from the host.
-
-# 1) Add a public gpg key for a local container to use.
-# 2) Include public gpg key as a bind mount or save it on a volume which can be
-# mounted.
-# 3) Create a new asymmetric key on the local container that will use the
-# secret.
-# 4) Encrypt the new asymmetric secret key with the gpg public key.
-# 5) Save the new asymmetric public key in a volume.
-# 6) Save the encrypted asymmetric private key in a volume.
-# 7)
-#
-# 1) ...Or just don't care about local secrets as they shouldn't be considered
-# sensitive. Bind mount the config file that is in plaintext.
-# Should the script run the api-bridge.Dockerfile?
-#
+if [ ! -e "$not_encrypted_secrets_dir/api/api-bridge.secrets.cfg" ]; then
+  "$script_dir/local-secrets.sh" || echo "Ignoring error from local-secrets.sh"
+fi
 
 build_start_immutable_example
 build_start_api

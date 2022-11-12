@@ -19,12 +19,12 @@ project_dir_basename="$(basename "$project_dir")"
 project_name_hash="$(printf "%s" "$project_dir" | md5sum | cut -d' ' -f1)"
 test "${#project_name_hash}" -eq "32" || (echo "ERROR $script_name: Failed to create a project name hash from the project dir ($project_dir)" && exit 1)
 
-# Storing the encrypted secrets in the user data directory for this site
+# Storing the local development secrets in the user data directory for this site
 # depending on the project directory path at the time.
 # https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
 site_data_home="${XDG_DATA_HOME:-"$HOME/.local/share"}/$project_dir_basename-$slugname--$project_name_hash"
 
-encrypted_secrets_dir="$site_data_home/encrypted-secrets"
+not_encrypted_secrets_dir="$site_data_home/not-encrypted-secrets"
 
 not_secure_key_dir="$site_data_home/not-secure-keys"
 
@@ -166,8 +166,7 @@ for service_obj in $services; do
   secrets_export_dockerfile="$(echo "$service_obj" | jq -r '.secrets_export_dockerfile // ""')"
   test -n "$secrets_export_dockerfile" || (echo "ERROR $script_name: No secrets_export_dockerfile value set in services, yet secrets_config is defined. $slugname - $service_obj" && exit 1)
 
-  encrypted_secret_service_dir="$encrypted_secrets_dir"
-  mkdir -p "$encrypted_secret_service_dir"
+  mkdir -p "$not_encrypted_secrets_dir"
 
   public_key="$not_secure_key_dir/$service_handler.public.pem"
 
@@ -177,15 +176,15 @@ for service_obj in $services; do
   test -f "$public_key" || (echo "ERROR $script_name: No public key at $public_key" && exit 1)
 
   replace_secret_file=""
-  encrypted_secret_file="$encrypted_secrets_dir/$service_handler/$secrets_config"
+  not_encrypted_secret_file="$not_encrypted_secrets_dir/$service_handler/$secrets_config"
 
-  if [ -e "$encrypted_secret_file" ]; then
-    echo "The encrypted file already exists at $encrypted_secret_file"
+  if [ -e "$not_encrypted_secret_file" ]; then
+    echo "The file already exists at $not_encrypted_secret_file"
     echo "Replace this file? y/n"
     read -r replace_secret_file
     test "$replace_secret_file" = "y" || continue
   fi
-  rm -f "$encrypted_secret_file"
+  rm -f "$not_encrypted_secret_file"
 
   test -f "$project_dir/$service_handler/$secrets_export_dockerfile" || (echo "ERROR: No secrets export dockerfile at path: $project_dir/$service_handler/$secrets_export_dockerfile" && exit 1)
 
@@ -235,7 +234,7 @@ for service_obj in $services; do
       exitcode="$?"
       echo "docker exited with $exitcode exitcode. Ignoring"
     )
-  docker cp "$container_name-sleeper:$service_persistent_dir/encrypted-secrets/." "$encrypted_secret_service_dir/" || echo "Ignore docker cp error."
+  docker cp "$container_name-sleeper:$service_persistent_dir/encrypted-secrets/." "$not_encrypted_secrets_dir/" || echo "Ignore docker cp error."
   docker stop --time 0 "$container_name-sleeper" || printf ""
   docker rm "$container_name-sleeper" || printf ""
 
