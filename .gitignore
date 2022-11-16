@@ -1,4 +1,3 @@
 /dist/*
 !/dist/README.md
 !/dist/.gitkeep
-/.local-start-site-env-vars

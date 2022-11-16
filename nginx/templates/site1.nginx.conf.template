@@ -10,6 +10,12 @@ server {
   access_log /var/log/nginx/${SLUGNAME}/access.log;
   error_log /var/log/nginx/${SLUGNAME}/error.log;
 
+  # Limit all server wide to this small amount. Override on a location level.
+  client_max_body_size 20k;
+
+  # Ignore query parameters for cache.
+  proxy_cache_key $scheme$proxy_host$uri;
+
   location ${CHILL_STATIC_EXAMPLE_PATH} {
     limit_except GET {
       deny all;
@@ -41,6 +47,9 @@ server {
 
   # For SSL cert validation
   location /.well-known/ {
+    limit_except GET {
+      deny all;
+    }
     root /srv/${SLUGNAME}/;
   }
 
@@ -51,6 +60,10 @@ server {
   }
 
   location ~* ^/(robots|humans).txt$ {
+    limit_except GET {
+      deny all;
+    }
+    add_header Cache-Control "public";
     try_files $uri =404;
   }
 
