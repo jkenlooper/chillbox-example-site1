@@ -29,18 +29,6 @@ Args:
 HERE
 }
 
-build_and_run() {
-# For local development; this can be on the host network. The BIND is set to
-# localhost so only localhost can access. Switch it to 0.0.0.0 to allow anyone
-# else on that network to access.
-IMMUTABLE_EXAMPLE_PORT="${IMMUTABLE_EXAMPLE_PORT:-8080}"
-IMMUTABLE_EXAMPLE_BIND="${IMMUTABLE_EXAMPLE_BIND:-127.0.0.1}"
-
-script_filename="$(basename "$0")"
-script_name="$(basename "$0" ".sh")"
-image_name="$slugname-$appname-$script_name"
-container_name="$slugname-$appname-$script_name"
-
 stop_and_rm_containers_silently () {
   # A fresh start of the containers are needed. Hide any error output and such
   # from this as it is irrelevant like a lost llama.
@@ -49,6 +37,14 @@ stop_and_rm_containers_silently () {
 
   docker container rm "$container_name" > /dev/null 2>&1 || printf ''
 }
+
+build_and_run() {
+# For local development; this can be on the host network. The BIND is set to
+# localhost so only localhost can access. Switch it to 0.0.0.0 to allow anyone
+# else on that network to access.
+IMMUTABLE_EXAMPLE_PORT="${IMMUTABLE_EXAMPLE_PORT:-8080}"
+IMMUTABLE_EXAMPLE_BIND="${IMMUTABLE_EXAMPLE_BIND:-127.0.0.1}"
+
 stop_and_rm_containers_silently
 
 docker image rm "$image_name" > /dev/null 2>&1 || printf ""
@@ -89,5 +85,9 @@ test -n "$appname" || (echo "ERROR $script_name: No appname set." >&2 && usage &
 test -n "$project_dir" || (echo "ERROR $script_name: No project_dir set." >&2 && usage && exit 1)
 project_dir="$(realpath "$project_dir")"
 test -d "$project_dir" || (echo "ERROR $script_name The project directory ($project_dir) must exist." >&2 && exit 1)
+
+project_name_hash="$(printf "%s" "$project_dir" | md5sum | cut -d' ' -f1)"
+image_name="$slugname-$appname-$project_name_hash"
+container_name="$slugname-$appname-$project_name_hash"
 
 build_and_run "$@"

@@ -49,9 +49,9 @@ test -n "$project_dir" || (echo "ERROR $script_name: No project_dir set." >&2 &&
 project_dir="$(realpath "$project_dir")"
 test -d "$project_dir" || (echo "ERROR $script_name The project directory ($project_dir) must exist." >&2 && exit 1)
 
-script_name_no_sh="$(basename "$0" ".sh")"
-image_name="$slugname-$appname-$script_name_no_sh"
-container_name="$slugname-$appname-$script_name_no_sh"
+project_name_hash="$(printf "%s" "$project_dir" | md5sum | cut -d' ' -f1)"
+image_name="$slugname-$appname-$project_name_hash"
+container_name="$slugname-$appname-$project_name_hash"
 
 stop_and_rm_containers_silently () {
   # A fresh start of the containers are needed. Hide any error output and such

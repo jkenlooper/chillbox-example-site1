@@ -9,6 +9,7 @@ WORKDIR /build
 
 RUN <<DEV_USER
 # Create an unprivileged user that will only have access to /build directory.
+set -o errexit
 addgroup -g 2000 dev
 adduser -u 2000 -G dev -s /bin/sh -D dev
 chown -R dev:dev /build
@@ -29,7 +30,6 @@ COPY --chown=dev:dev local-scripts/dev.sh /build/dev.sh
 COPY --chown=dev:dev local-scripts/build-serve.sh /build/build-serve.sh
 COPY --chown=dev:dev local-scripts/build.sh /build/build.sh
 
-# Only the src/ directory is copied to the container.
 COPY --chown=dev:dev src /build/src
 
 ENV BUILD_SRC_DIR=/build/src
