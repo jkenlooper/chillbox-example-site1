@@ -15,6 +15,23 @@ adduser -u 2000 -G dev -s /bin/sh -D dev
 chown -R dev:dev /build
 DEV_USER
 
+RUN <<INSTALL
+set -o errexit
+apk update
+apk add --no-cache \
+  mandoc man-pages docs \
+  make \
+  imagemagick
+
+# The .tmp/ directory is for storing intermediate files from other *.mk files.
+mkdir -p .tmp
+
+# The dist/ directory will contain the generated files.
+mkdir -p dist
+
+chown -R dev:dev /build/dist .tmp
+INSTALL
+
 RUN <<FILEWATCH_SUPPORT
 # Support for doing local development
 set -o errexit
@@ -44,7 +61,6 @@ RUN ./build.sh
 # network.
 ENV BIND=0.0.0.0
 ENV IMMUTABLE_EXAMPLE_PORT=8080
-ENV PORT=$IMMUTABLE_EXAMPLE_PORT
 
 # Default command is to run the dev.sh script to watch files and build and serve
 # them.
@@ -53,8 +69,8 @@ CMD ["./dev.sh"]
 ### Serve
 FROM lipanski/docker-static-website:1.0.0@sha256:ea8516e6b2928c3c1b1c6737f7e32e03b10a04f978080592e61c3dbe2871ff1a
 
-
+# Try to copy the /build/media, but fail if the build failed.
 COPY --from=build /build/dist /home/static
 
 # Need a Cache-Control:max-age=0 header (thttpd option '-M 0') on all responses.
-CMD ["/thttpd", "-D", "-h", "$BIND", "-p", "$PORT", "-d", "/home/static", "-u", "static", "-l", "-", "-M", "0"]
+CMD ["/thttpd", "-D", "-h", "$BIND", "-p", "$IMMUTABLE_EXAMPLE_PORT", "-d", "/home/static", "-u", "static", "-l", "-", "-M", "0"]

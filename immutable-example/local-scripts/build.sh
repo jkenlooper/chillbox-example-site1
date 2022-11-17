@@ -67,6 +67,7 @@ build_it() {
   else
     mkdir -p "$BUILD_DIST_DIR"
   fi
-  find "$BUILD_SRC_DIR" -depth -mindepth 1 -maxdepth 1 -exec cp -Rf {} "$BUILD_DIST_DIR/" \;
+
+  find "$BUILD_SRC_DIR" -type f -name '*.mk' -print | sort -d -f -r | xargs -n 1 make -C /build -f
 }
 build_it
