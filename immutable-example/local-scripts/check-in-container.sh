@@ -2,6 +2,9 @@
 
 set -o errexit
 
+# This file in the parent directory immutable-example was generated from the immutable-make directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
+# Version: 0.0.1-alpha.1
+
 check_in_container() {
   if [ -z "$LOCAL_CONTAINER" ] || [ "$LOCAL_CONTAINER" != "yes" ]; then
     echo "LOCAL_CONTAINER is currently set to '$LOCAL_CONTAINER'"

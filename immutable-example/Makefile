@@ -1,3 +1,6 @@
+# This file in the parent directory immutable-example was generated from the immutable-make directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
+# Version: 0.0.1-alpha.1
+
 SHELL := sh
 .SHELLFLAGS := -o errexit -c
 .DEFAULT_GOAL := all
