@@ -3,12 +3,13 @@ set -o errexit
 
 script_name="$(basename "$0")"
 script_dir="$(dirname "$(realpath "$0")")"
+. "$script_dir/check-in-container.sh"
 invalid_errcode=4
 
 usage() {
   cat <<HEREUSAGE
 
-Executes the build.sh script and then serves the files in BUILD_DIST_DIR with
+Executes the build.sh script and then serves the files in /build/dist/ with
 the python http.server module.
 
 Usage:
@@ -19,10 +20,8 @@ Options:
   -h                  Show this help message.
 
 Environment Variables:
-  BUILD_SRC_DIR=/build/src
-  BUILD_DIST_DIR=/build/dist
   BIND=0.0.0.0
-  PORT=8080
+  IMMUTABLE_EXAMPLE_PORT=8080
 
 
 HEREUSAGE
@@ -54,24 +53,22 @@ check_for_required_commands() {
 }
 
 check_env_vars() {
-  test -n "$BUILD_SRC_DIR" || (echo "ERROR $script_name: No BUILD_SRC_DIR environment variable defined" >&2 && usage && exit "$invalid_errcode")
-  test -d "$BUILD_SRC_DIR" || (echo "ERROR $script_name: The BUILD_SRC_DIR environment variable is not set to a directory" >&2 && usage && exit "$invalid_errcode")
-
-  test -n "$BUILD_DIST_DIR" || (echo "ERROR $script_name: No BUILD_DIST_DIR environment variable defined" >&2 && usage && exit "$invalid_errcode")
   test -n "$BIND" || (echo "ERROR $script_name: No BIND environment variable defined" >&2 && usage && exit "$invalid_errcode")
-  test -n "$PORT" || (echo "ERROR $script_name: No PORT environment variable defined" >&2 && usage && exit "$invalid_errcode")
+  test -n "$IMMUTABLE_EXAMPLE_PORT" || (echo "ERROR $script_name: No IMMUTABLE_EXAMPLE_PORT environment variable defined" >&2 && usage && exit "$invalid_errcode")
 }
+
+check_in_container "make help"
 
 check_for_required_commands
 check_env_vars
 
 "$script_dir/build.sh"
 
-tree -a "$BUILD_DIST_DIR"
+tree -a "/build/dist"
 if [ -n "$has_thttpd" ]; then
   # Need a Cache-Control:max-age=0 header (thttpd option '-M 0') on all responses.
   set -x
-  thttpd -D -h "$BIND" -p "$PORT" -d "$BUILD_DIST_DIR" -u dev -l - -M 1
+  thttpd -D -h "$BIND" -p "$IMMUTABLE_EXAMPLE_PORT" -d "/build/dist" -u dev -l - -M 1
 elif [ -n "$has_python3" ]; then
   printf "\n%s\n" "
   # Warning
@@ -80,7 +77,7 @@ elif [ -n "$has_python3" ]; then
   # security checks.
   "
   set -x
-  python3 -m http.server --directory "$BUILD_DIST_DIR" --bind "$BIND" "$PORT"
+  python3 -m http.server --directory "/build/dist" --bind "$BIND" "$IMMUTABLE_EXAMPLE_PORT"
 else
   echo "ERROR $script_name: Unhandled condition." >&2
   exit 8

@@ -4,7 +4,9 @@ SHELL := sh
 .DELETE_ON_ERROR:
 .SUFFIXES:
 
+
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
+mkfile_name := $(notdir $(mkfile_path))
 project_dir := $(dir $(mkfile_path))
 app_name := $(notdir $(patsubst %/,%,$(project_dir)))
 slugname := site1
@@ -36,12 +38,12 @@ dist: .dist ## Create dist/* files for distribution
 
 # Run the local-scripts/build.sh script to create the dist/* files.
 .dist: local-scripts/local-build.sh $(project_files)
-	./$< -s $(slugname) -a $(app_name) -p $(project_dir)
+	MKFILE_NAME="$(mkfile_name)" ./$< -s $(slugname) -a $(app_name) -p $(project_dir)
 	@touch $@
 
 .PHONY: start
 start: ## Start local development
-	$(project_dir)/local-scripts/local-start.sh -s $(slugname) -a $(app_name) -p $(project_dir)
+	MKFILE_NAME="$(mkfile_name)" $(project_dir)/local-scripts/local-start.sh -s $(slugname) -a $(app_name) -p $(project_dir)
 
 .PHONY: clean
 clean: ## Remove files that were created

@@ -2,6 +2,8 @@
 set -o errexit
 
 script_name="$(basename "$0")"
+script_dir="$(dirname "$0")"
+. "$script_dir/check-in-container.sh"
 invalid_errcode=4
 
 usage() {
@@ -16,11 +18,6 @@ Usage:
 
 Options:
   -h                  Show this help message.
-
-Environment Variables:
-  BUILD_SRC_DIR=/build/src
-  BUILD_DIST_DIR=/build/dist
-
 
 HEREUSAGE
 }
@@ -42,32 +39,28 @@ check_for_required_commands() {
     realpath \
     cp \
     find \
+    make \
     ; do
     command -v "$required_command" > /dev/null || (echo "ERROR $script_name: Requires '$required_command' command." >&2 && exit "$invalid_errcode")
   done
 }
 
-check_env_vars() {
-  test -n "$BUILD_SRC_DIR" || (echo "ERROR $script_name: No BUILD_SRC_DIR environment variable defined" >&2 && usage && exit "$invalid_errcode")
-  test -d "$BUILD_SRC_DIR" || (echo "ERROR $script_name: The BUILD_SRC_DIR environment variable is not set to a directory" >&2 && usage && exit "$invalid_errcode")
-
-  test -n "$BUILD_DIST_DIR" || (echo "ERROR $script_name: No BUILD_DIST_DIR environment variable defined" >&2 && usage && exit "$invalid_errcode")
-}
+check_in_container "make help"
 
 check_for_required_commands
-check_env_vars
 
 build_it() {
   # For this example it is only copying the files from the src directory to the
   # dist directory.
-  if [ -d "$BUILD_DIST_DIR" ]; then
+  if [ -d "/build/dist" ]; then
     # Start with a fresh dist directory.
-    find "$BUILD_DIST_DIR" -depth -mindepth 1 -type f -delete
-    find "$BUILD_DIST_DIR" -depth -mindepth 1 -type d -empty -delete
+    find "/build/dist" -depth -mindepth 1 -type f -delete
+    find "/build/dist" -depth -mindepth 1 -type d -empty -delete
   else
-    mkdir -p "$BUILD_DIST_DIR"
+    mkdir -p "/build/dist"
   fi
 
-  find "$BUILD_SRC_DIR" -type f -name '*.mk' -print | sort -d -f -r | xargs -n 1 make -C /build -f
+  # Only use .mk files from the top level of the project.
+  find "/build" -depth -mindepth 1 -maxdepth 1 -type f -name '*.mk' -print | sort -d -f -r | xargs -n 1 make -C /build -f
 }
 build_it

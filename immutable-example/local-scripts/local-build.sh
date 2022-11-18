@@ -3,6 +3,8 @@
 set -o errexit
 
 script_name="$(basename "$0")"
+script_dir="$(dirname "$0")"
+. "$script_dir/check-mkfile-name.sh"
 
 usage() {
   cat <<HERE
@@ -42,6 +44,8 @@ while getopts "hs:a:p:" OPTION ; do
   esac
 done
 shift $((OPTIND - 1))
+
+check_mkfile_name "make"
 
 test -n "$slugname" || (echo "ERROR $script_name: No slugname set." >&2 && usage && exit 1)
 test -n "$appname" || (echo "ERROR $script_name: No appname set." >&2 && usage && exit 1)
