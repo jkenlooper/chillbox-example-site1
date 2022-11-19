@@ -20,6 +20,13 @@ project_dir_basename="$(basename "$project_dir")"
 project_name_hash="$(printf "%s" "$project_dir" | md5sum | cut -d' ' -f1)"
 test "${#project_name_hash}" -eq "32" || (echo "ERROR $script_name: Failed to create a project name hash from the project dir ($project_dir)" && exit 1)
 
+# Hostnames can't be over 63 characters
+chill_static_example_host="$(printf '%s' "$slugname-chill-static-example-$project_name_hash" | grep -o -E '^.{0,63}')"
+chill_dynamic_example_host="$(printf '%s' "$slugname-chill-dynamic-example-$project_name_hash" | grep -o -E '^.{0,63}')"
+api_host="$(printf '%s' "$slugname-api-$project_name_hash" | grep -o -E '^.{0,63}')"
+immutable_example_host="$(printf '%s' "$slugname-immutable-example-$project_name_hash" | grep -o -E '^.{0,63}')"
+nginx_host="$(printf '%s' "$slugname-nginx-$project_name_hash" | grep -o -E '^.{0,63}')"
+
 # Storing the local development secrets in the user data directory for this site
 # depending on the project directory path at the time.
 # https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
@@ -53,24 +60,28 @@ SITES_ARTIFACT=not-applicable
 SLUGNAME=$slugname
 TECH_EMAIL=llama@local.test
 VERSION=$site_version_string
+
 CHILL_STATIC_EXAMPLE_TRY_FILES_LAST_PARAM=@chill-static-example
 CHILL_STATIC_EXAMPLE_PATH=/
 CHILL_STATIC_EXAMPLE_PORT=5000
 CHILL_STATIC_EXAMPLE_SCHEME=http
-CHILL_STATIC_EXAMPLE_HOST=$slugname-chill-static-example-$project_name_hash
+CHILL_STATIC_EXAMPLE_HOST=$chill_static_example_host
+
 CHILL_DYNAMIC_EXAMPLE_PATH=/dynamic/
 CHILL_DYNAMIC_EXAMPLE_PORT=5001
 CHILL_DYNAMIC_EXAMPLE_SCHEME=http
-CHILL_DYNAMIC_EXAMPLE_HOST=$slugname-chill-dynamic-example-$project_name_hash
+CHILL_DYNAMIC_EXAMPLE_HOST=$chill_dynamic_example_host
+
 API_PATH=/api/
 API_PORT=8100
 API_SCHEME=http
-API_HOST=$slugname-api-$project_name_hash
+API_HOST=$api_host
+
 IMMUTABLE_EXAMPLE_HASH=$immutable_example_hash
 IMMUTABLE_EXAMPLE_PATH=/immutable-example/v1/$immutable_example_hash/
 IMMUTABLE_EXAMPLE_PORT=$immutable_example_port
-IMMUTABLE_EXAMPLE_HOST=$slugname-immutable-example-$project_name_hash
-IMMUTABLE_EXAMPLE_URL=http://$slugname-immutable-example-$project_name_hash:$immutable_example_port/
+IMMUTABLE_EXAMPLE_HOST=$immutable_example_host
+IMMUTABLE_EXAMPLE_URL=http://$immutable_example_host:$immutable_example_port/
 MEOW
 . "$site_env_vars_file"
 
@@ -91,29 +102,31 @@ fi
 
 build_start_immutable_example() {
   service_handler="immutable-example"
-  docker image rm "$slugname-$service_handler-$project_name_hash" > /dev/null 2>&1 || printf ""
+  host="$immutable_example_host"
+  docker image rm "$host" > /dev/null 2>&1 || printf ""
   DOCKER_BUILDKIT=1 docker build \
       --target build \
-      -t "$slugname-$service_handler-$project_name_hash" \
+      -t "$host" \
       "$project_dir/$service_handler"
   docker run -d \
     --network chillboxnet \
     --env-file "$site_env_vars_file" \
     --mount "type=bind,src=$project_dir/$service_handler/src,dst=/build/src,readonly" \
-    --name "$slugname-$service_handler-$project_name_hash" \
-    "$slugname-$service_handler-$project_name_hash"
+    --name "$host" \
+    "$host"
 }
 
 build_start_api() {
   service_handler="api"
-  docker image rm "$slugname-$service_handler-$project_name_hash" > /dev/null 2>&1 || printf ""
+  host="$api_host"
+  docker image rm "$host" > /dev/null 2>&1 || printf ""
   DOCKER_BUILDKIT=1 docker build \
-    -t "$slugname-$service_handler-$project_name_hash" \
+    -t "$host" \
     "$project_dir/$service_handler"
   # Switch to root user when troubleshooting or using bind mounts
-  echo "Running the $slugname-$service_handler-$project_name_hash container with root user."
+  echo "Running the $host container with root user."
   docker run -d --tty \
-    --name "$slugname-$service_handler-$project_name_hash" \
+    --name "$host" \
     --user root \
     --env-file "$site_env_vars_file" \
     -e HOST="localhost" \
@@ -122,56 +135,59 @@ build_start_api() {
     --network chillboxnet \
     --mount "type=bind,src=$project_dir/api/src/site1_api,dst=/usr/local/src/app/src/site1_api,readonly" \
     --mount "type=bind,src=$not_encrypted_secrets_dir/api/api-bridge.secrets.cfg,dst=/var/lib/local-secrets/site1/api/api-bridge.secrets.cfg,readonly" \
-    "$slugname-$service_handler-$project_name_hash" ./flask-run.sh
+    "$host" ./flask-run.sh
 }
 
 build_start_chill_static_example() {
   service_handler="chill-static-example"
-  docker image rm "$slugname-$service_handler-$project_name_hash" > /dev/null 2>&1 || printf ""
+  host="$chill_static_example_host"
+  docker image rm "$host" > /dev/null 2>&1 || printf ""
   DOCKER_BUILDKIT=1 docker build \
-      -t "$slugname-$service_handler-$project_name_hash" \
+      -t "$host" \
       "$project_dir/$service_handler"
   docker run -d \
-    --name "$slugname-$service_handler-$project_name_hash" \
+    --name "$host" \
     --network chillboxnet \
     --env-file "$site_env_vars_file" \
-    --mount "type=volume,src=$slugname-$service_handler-$project_name_hash,dst=/var/lib/chill/sqlite3" \
+    --mount "type=volume,src=$host,dst=/var/lib/chill/sqlite3" \
     --mount "type=bind,src=$project_dir/$service_handler/documents,dst=/home/chill/app/documents" \
     --mount "type=bind,src=$project_dir/$service_handler/queries,dst=/home/chill/app/queries" \
     --mount "type=bind,src=$project_dir/$service_handler/templates,dst=/home/chill/app/templates" \
-    "$slugname-$service_handler-$project_name_hash"
+    "$host"
 }
 
 build_start_chill_dynamic_example() {
   service_handler="chill-dynamic-example"
-  docker image rm "$slugname-$service_handler-$project_name_hash" > /dev/null 2>&1 || printf ""
+  host="$chill_dynamic_example_host"
+  docker image rm "$host" > /dev/null 2>&1 || printf ""
   DOCKER_BUILDKIT=1 docker build \
-      -t "$slugname-$service_handler-$project_name_hash" \
+      -t "$host" \
       "$project_dir/$service_handler"
   docker run -d \
-    --name "$slugname-$service_handler-$project_name_hash" \
+    --name "$host" \
     --network chillboxnet \
     --env-file "$site_env_vars_file" \
-    --mount "type=volume,src=$slugname-$service_handler-$project_name_hash,dst=/var/lib/chill/sqlite3" \
+    --mount "type=volume,src=$host,dst=/var/lib/chill/sqlite3" \
     --mount "type=bind,src=$project_dir/$service_handler/documents,dst=/home/chill/app/documents" \
     --mount "type=bind,src=$project_dir/$service_handler/queries,dst=/home/chill/app/queries" \
     --mount "type=bind,src=$project_dir/$service_handler/templates,dst=/home/chill/app/templates" \
-    "$slugname-$service_handler-$project_name_hash"
+    "$host"
 }
 
 build_start_nginx() {
   service_handler="nginx"
-  docker image rm "$slugname-$service_handler-$project_name_hash" > /dev/null 2>&1 || printf ""
+  host="$nginx_host"
+  docker image rm "$host" > /dev/null 2>&1 || printf ""
   DOCKER_BUILDKIT=1 docker build \
-      -t "$slugname-$service_handler-$project_name_hash" \
+      -t "$host" \
       "$project_dir/$service_handler"
   docker run -d \
     -p "$app_port:$app_port" \
-    --name "$slugname-$service_handler-$project_name_hash" \
+    --name "$host" \
     --network chillboxnet \
     --env-file "$site_env_vars_file" \
     --mount "type=bind,src=$project_dir/$service_handler/templates,dst=/build/templates" \
-    "$slugname-$service_handler-$project_name_hash"
+    "$host"
 }
 
 if [ ! -e "$not_encrypted_secrets_dir/api/api-bridge.secrets.cfg" ]; then

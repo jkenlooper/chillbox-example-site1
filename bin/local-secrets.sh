@@ -188,8 +188,8 @@ for service_obj in $services; do
 
   test -f "$project_dir/$service_handler/$secrets_export_dockerfile" || (echo "ERROR: No secrets export dockerfile at path: $project_dir/$service_handler/$secrets_export_dockerfile" && exit 1)
 
-  service_image_name="$slugname-$service_handler-$project_name_hash"
-  container_name="$service_image_name"
+  container_name="$(printf '%s' "$slugname-$service_handler-$project_name_hash" | grep -o -E '^.{0,63}')"
+  service_image_name="$container_name"
   tmpfs_dir="/run/tmp/$service_image_name"
   service_persistent_dir="/var/lib/$slugname-$service_handler"
   chillbox_pubkey_dir="/var/lib/chillbox/public-keys"
