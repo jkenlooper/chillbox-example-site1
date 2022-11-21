@@ -18,6 +18,7 @@ apk add --no-cache \
   libffi-dev \
   build-base \
   musl-dev
+
 ln -s /usr/bin/python3 /usr/bin/python
 python -m venv .
 /usr/local/src/app-venv/bin/pip install --upgrade pip wheel
@@ -40,10 +41,10 @@ PIP_INSTALL_APP
 
 ## Stage 2
 
-# UPKEEP due: "2022-10-08" label: "Alpine Linux base image" interval: "+3 months"
-# docker pull alpine:3.16.0
+# UPKEEP due: "2023-01-10" label: "Alpine Linux base image" interval: "+3 months"
+# docker pull alpine:3.16.2
 # docker image ls --digests alpine
-FROM alpine:3.16.0@sha256:686d8c9dfa6f3ccfc8230bc3178d23f84eeaf7e457f36f271ab1acc53015037c
+FROM alpine:3.16.2@sha256:bc41182d7ef5ffc53a40b044e725193bc10142a1243f395ee852a8d9730fc2ad
 
 RUN <<DEV_USER
 addgroup -g 44444 dev
@@ -62,9 +63,40 @@ ENV FLASK_INSTANCE_PATH=$FLASK_INSTANCE_PATH
 RUN <<APP_DEPENDENCIES
 set -o errexit
 apk update
+# Support python services and python Pillow
+# Should match the list from chillbox install-service-dependencies.sh
 apk add --no-cache \
+  -q --no-progress \
+  build-base \
+  freetype \
+  freetype-dev \
+  fribidi \
+  fribidi-dev \
+  gcc \
+  harfbuzz \
+  harfbuzz-dev \
+  jpeg \
+  jpeg-dev \
+  lcms2 \
+  lcms2-dev \
+  libffi-dev \
+  libjpeg \
+  musl-dev \
+  openjpeg \
+  openjpeg-dev \
+  py3-pip \
   python3 \
-  sqlite
+  python3-dev \
+  sqlite \
+  tcl \
+  tcl-dev \
+  tiff \
+  tiff-dev \
+  tk \
+  tk-dev \
+  zlib \
+  zlib-dev
+
 ln -s /usr/bin/python3 /usr/bin/python
 
 mkdir -p $FLASK_INSTANCE_PATH
