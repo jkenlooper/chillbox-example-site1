@@ -38,7 +38,7 @@ help: ## Show this help
 	@egrep -h '\s##\s' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: dist
-dist: dist/artifact.tar.gz dist/immutable.tar.gz ## Create tar.gz files for distribution
+dist: dist/$(slugname).tar.gz ## Create release tar.gz file for distribution
 
 # Run the bin/artifact.sh script to create the dist/artifact.tar.gz file.
 dist/artifact.tar.gz: bin/artifact.sh
@@ -48,6 +48,9 @@ dist/artifact.tar.gz: bin/artifact.sh
 dist/immutable.tar.gz: bin/immutable.sh
 	./$< -s $(slugname) -t $(abspath $@) \
 		$(project_dir)immutable-example
+
+dist/$(slugname).tar.gz: bin/release.sh $(project_files)
+	./$< -s $(slugname) -t $(abspath $@)
 
 .PHONY: start
 start: ## Start local development
