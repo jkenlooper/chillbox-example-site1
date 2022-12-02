@@ -58,4 +58,4 @@ start: ## Start local development
 
 .PHONY: clean
 clean: ## Remove files that were created
-	printf '%s\0' $(objects) | xargs -0 rm -f
+	printf '%s\0' dist/$(slugname)-$(VERSION).tar.gz $(objects) | xargs -0 rm -f
