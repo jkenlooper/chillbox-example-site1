@@ -73,7 +73,7 @@
     {
       "name": "IMMUTABLE_EXAMPLE_HASH",
       "value": "replaced-with-cmd-to-get-hash",
-      "cmd": "md5sum ./Makefile | cut -d' ' -f1"
+      "cmd": "make --silent --directory=immutable-example --no-print-directory inspect.HASH"
     }
   ],
   "crontab": [
