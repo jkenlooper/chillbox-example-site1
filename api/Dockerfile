@@ -32,6 +32,7 @@ apk --purge del \
 BUILD_DEPENDENCIES
 
 WORKDIR /usr/local/src/app
+#TODO need to copy all of it here?
 COPY . ./
 RUN <<PIP_INSTALL_APP
 set -o errexit

@@ -5,7 +5,7 @@
 # docker image ls --digests alpine
 FROM alpine:3.16.2@sha256:bc41182d7ef5ffc53a40b044e725193bc10142a1243f395ee852a8d9730fc2ad
 
-WORKDIR /usr/local/src/api-secrets
+WORKDIR /usr/local/src/secrets
 RUN <<DEPENDENCIES
 set -o errexit
 apk update
@@ -19,7 +19,7 @@ apk add mandoc man-pages docs
 apk add vim
 DEPENDENCIES
 
-ARG SECRETS_CONFIG=api-bridge.secrets.cfg
+ARG SECRETS_CONFIG=api.secrets.cfg
 ENV SECRETS_CONFIG=$SECRETS_CONFIG
 ARG CHILLBOX_PUBKEY_DIR
 ENV CHILLBOX_PUBKEY_DIR=$CHILLBOX_PUBKEY_DIR
@@ -41,7 +41,7 @@ ENV ENCRYPT_FILE=encrypt-file
 
 RUN <<SECRETS_PROMPT_SH
 set -o errexit
-cat <<'HERE' > /usr/local/src/api-secrets/secrets-prompt.sh
+cat <<'HERE' > /usr/local/src/secrets/secrets-prompt.sh
 #!/usr/bin/env sh
 
 set -o errexit
@@ -56,44 +56,25 @@ mkdir -p "$TMPFS_DIR/secrets/"
 mkdir -p "$SERVICE_PERSISTENT_DIR"
 
 
-printf "\n\n%s\n" "Stop."
-
-typeit() {
-  for w in $1; do
-    chars="$(echo "$w" | sed 's/\(.\)/\1 /g')"
-    for c in $chars; do
-      printf "$c"
-      sleep 0.1
-    done
-    printf " "
-    sleep 0.1
-  done
-}
-
-typeit "Who would cross the Bridge of Death must answer me these questions three, ere the other side he see."
+printf "Example of prompt for adding secrets. The input is hidden."
 printf "\n\n"
 
-sleep 1
-printf "\nWhat… "
-sleep 1
-typeit "is your name?"
-printf "  "
+printf "\nQuestion 1: "
+stty -echo
 read first_answer
+stty echo
 
-printf "\nWhat… "
-sleep 1
-typeit "is your quest?"
-printf "  "
+printf "\nQuestion 2: "
+stty -echo
 read second_answer
+stty echo
 
-printf "\nWhat… "
-sleep 1
-typeit "is your favourite colour?"
-printf "  "
+printf "\nQuestion 5: "
+stty -echo
 read fifth_answer
+stty echo
 
-printf "\n\n"
-typeit "Go on. Off you go."
+printf "\nAll done."
 printf "\n\n"
 
 cat <<SECRETS > "$TMPFS_DIR/secrets/$SECRETS_CONFIG"
@@ -118,8 +99,8 @@ find "$CHILLBOX_PUBKEY_DIR" -depth -mindepth 1 -maxdepth 1 -name '*.public.pem' 
   done
 
 HERE
-chmod +x /usr/local/src/api-secrets/secrets-prompt.sh
+chmod +x /usr/local/src/secrets/secrets-prompt.sh
 
 SECRETS_PROMPT_SH
 
-ENTRYPOINT ["/usr/local/src/api-secrets/secrets-prompt.sh"]
+ENTRYPOINT ["/usr/local/src/secrets/secrets-prompt.sh"]

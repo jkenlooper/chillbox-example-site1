@@ -89,8 +89,8 @@
       "name": "api",
       "lang": "flask",
       "handler": "api",
-      "secrets_config": "api-bridge.secrets.cfg",
-      "secrets_export_dockerfile": "api-bridge.secrets.Dockerfile",
+      "secrets_config": "api.secrets.cfg",
+      "secrets_export_dockerfile": "api.secrets.Dockerfile",
       "manifest": "MANIFEST",
       "environment": [
         {"name": "space space"},
