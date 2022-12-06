@@ -43,13 +43,12 @@ help: ## Show this help
 dist: dist/$(slugname)-$(VERSION).tar.gz ## Create release tar.gz file for distribution
 
 # Run the bin/artifact.sh script to create the dist/artifact.tar.gz file.
-dist/artifact.tar.gz: bin/artifact.sh
-	./$< $(abspath $@)
+dist/artifact.tar.gz: bin/artifact.sh local.site.json
+	./$< -s $(slugname) -t $(abspath $@) local.site.json
 
 # Run the bin/immutable.sh script to create the dist/immutable.tar.gz file.
-dist/immutable.tar.gz: bin/immutable.sh
-	./$< -s $(slugname) -t $(abspath $@) \
-		$(project_dir)immutable-example
+dist/immutable.tar.gz: bin/immutable.sh local.site.json
+	./$< -s $(slugname) -t $(abspath $@) local.site.json
 
 dist/$(slugname)-$(VERSION).tar.gz: bin/release.sh $(project_files)
 	./$< -s $(slugname) -t $(abspath $@)
@@ -57,6 +56,10 @@ dist/$(slugname)-$(VERSION).tar.gz: bin/release.sh $(project_files)
 .PHONY: start
 start: ## Start local development
 	./bin/local-start.sh
+
+.PHONY: stop
+stop: ## Stop local development
+	./bin/local-stop.sh
 
 .PHONY: clean
 clean: ## Remove files that were created
