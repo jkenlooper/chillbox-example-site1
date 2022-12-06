@@ -72,7 +72,7 @@
     },
     {
       "name": "IMMUTABLE_EXAMPLE_HASH",
-      "value": "replaced-with-cmd-to-get-hash",
+      "value": "810cdbfbd21fc5e08192641ead7e50c5",
       "cmd": "make --silent --directory=immutable-example --no-print-directory inspect.HASH"
     }
   ],
@@ -93,7 +93,9 @@
       "secrets_export_dockerfile": "api.secrets.Dockerfile",
       "manifest": "MANIFEST",
       "environment": [
-        {"name": "space space"},
+        {
+          "name": "space space"
+        },
         {
           "name": "PORT",
           "value": "$API_PORT"

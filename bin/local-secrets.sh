@@ -151,20 +151,28 @@ export DOCKER_BUILDKIT=1
     -t "$sleeper_image" \
     -
 
-site_json="$project_dir/local.site.json"
+#TODO get site json file as an arg.
+site_json_file="$project_dir/local.site.json"
 version="0.0.0-local+$project_name_hash"
 
-services="$(jq -c '.services // [] | .[]' "$site_json")"
-test -n "${services}" || (echo "WARNING $script_name: No services found in $site_json." && exit 0)
-
-for service_obj in $services; do
-  test -n "${service_obj}" || continue
-
-  secrets_config="$(echo "$service_obj" | jq -r '.secrets_config // ""')"
+services="$(jq -c '.services // [] | .[]' "$site_json_file")"
+test -n "$services" || (echo "WARNING $script_name: No services found in $site_json_file." && exit 0)
+IFS="$(printf '\n ')" && IFS="${IFS% }"
+#shellcheck disable=SC2086
+set -f -- $services
+for service_json_obj in "$@"; do
+  test -n "$service_json_obj" || continue
+  service_handler=""
+  secrets_config=""
+  secrets_export_dockerfile="$(echo "$service_json_obj" | jq -r '.secrets_export_dockerfile // ""')"
+  eval "$(echo "$service_json_obj" | jq -r '@sh "
+    service_handler=\(.handler)
+    secrets_config=\(.secrets_config // "")
+    secrets_export_dockerfile=\(.secrets_export_dockerfile // "")
+    "')"
+  echo "$service_handler"
   test -n "$secrets_config" || continue
-  service_handler="$(echo "$service_obj" | jq -r '.handler')"
-  secrets_export_dockerfile="$(echo "$service_obj" | jq -r '.secrets_export_dockerfile // ""')"
-  test -n "$secrets_export_dockerfile" || (echo "ERROR $script_name: No secrets_export_dockerfile value set in services, yet secrets_config is defined. $slugname - $service_obj" && exit 1)
+  test -n "$secrets_export_dockerfile" || (echo "ERROR $script_name: No secrets_export_dockerfile value set in services, yet secrets_config is defined. $slugname - $service_json_obj" && exit 1)
 
   mkdir -p "$not_encrypted_secrets_dir"
 

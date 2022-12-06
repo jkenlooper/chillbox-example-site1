@@ -2,30 +2,59 @@
 
 set -o errexit
 
-# Build and run each container in detached mode.
-# For development only; each one will rebuild on file changes.
+script_name="$(basename "$0")"
 
-slugname=site1
+usage() {
+  cat <<HERE
+
+Build and run each container in detached mode.
+For development only; each one will rebuild on file changes.
+
+Usage:
+  $script_name -h
+  $script_name -s <slugname> <site_json_file>
+
+Options:
+  -h                  Show this help message.
+
+  -s <slugname>       Set the slugname.
+
+Args:
+  <site_json_file>    Site json file with services.
+
+HERE
+}
+
+slugname=""
+
+while getopts "hs:t:" OPTION ; do
+  case "$OPTION" in
+    h) usage
+       exit 0 ;;
+    s) slugname=$OPTARG ;;
+    ?) usage
+       exit 1 ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+site_json_file="$1"
+
+test -n "$slugname" || (echo "ERROR $script_name: No slugname set." >&2 && usage && exit 1)
+test -n "$site_json_file" || (echo "ERROR $script_name: No argument set for the site json file." >&2 && usage && exit 1)
+site_json_file="$(realpath "$site_json_file")"
+test -f "$site_json_file" || (echo "ERROR $script_name: The $site_json_file is not a file." >&2 && usage && exit 1)
+
+
+# TODO build and start containers
 app_port=8088
-NODE_ENV=${NODE_ENV-"development"}
 script_dir="$(dirname "$(realpath "$0")")"
 project_dir="$(dirname "${script_dir}")"
-script_name="$(basename "$0")"
 site_version_string="$(make --silent -C "$project_dir" inspect.VERSION)"
-
-immutable_example_hash="$(make --silent -C "$project_dir/immutable-example/" inspect.HASH)"
-immutable_example_port=8080
 
 project_dir_basename="$(basename "$project_dir")"
 project_name_hash="$(printf "%s" "$project_dir" | md5sum | cut -d' ' -f1)"
 test "${#project_name_hash}" -eq "32" || (echo "ERROR $script_name: Failed to create a project name hash from the project dir ($project_dir)" && exit 1)
-
-# Hostnames can't be over 63 characters
-chill_static_example_host="$(printf '%s' "$slugname-chill-static-example-$project_name_hash" | grep -o -E '^.{0,63}')"
-chill_dynamic_example_host="$(printf '%s' "$slugname-chill-dynamic-example-$project_name_hash" | grep -o -E '^.{0,63}')"
-api_host="$(printf '%s' "$slugname-api-$project_name_hash" | grep -o -E '^.{0,63}')"
-immutable_example_host="$(printf '%s' "$slugname-immutable-example-$project_name_hash" | grep -o -E '^.{0,63}')"
-nginx_host="$(printf '%s' "$slugname-nginx-$project_name_hash" | grep -o -E '^.{0,63}')"
 
 # Storing the local development secrets in the user data directory for this site
 # depending on the project directory path at the time.
@@ -39,6 +68,89 @@ mkdir -p "$site_state_home"
 
 not_encrypted_secrets_dir="$site_data_home/not-encrypted-secrets"
 site_env_vars_file="$site_state_home/local-start-site-env-vars"
+chillbox_config_file="$site_state_home/local-chillbox-config"
+
+cat <<MEOW > "$chillbox_config_file"
+export CHILLBOX_ARTIFACT=not-applicable
+export SITES_ARTIFACT=not-applicable
+MEOW
+# shellcheck disable=SC1091
+. "$chillbox_config_file"
+
+cat <<MEOW > "$site_env_vars_file"
+export ARTIFACT_BUCKET_NAME=chillboxartifact
+export AWS_PROFILE=chillbox_object_storage
+export CHILLBOX_SERVER_NAME=chillbox.test
+export CHILLBOX_SERVER_PORT=80
+export IMMUTABLE_BUCKET_DOMAIN_NAME=http://chillbox-minio:9000
+export IMMUTABLE_BUCKET_NAME=chillboximmutable
+export LETS_ENCRYPT_SERVER=letsencrypt_test
+export S3_ENDPOINT_URL=http://chillbox-minio:9000
+# Not setting server_name to allow it to be set differently in each Dockerfile
+# if needed.
+#SERVER_NAME=
+export SERVER_PORT=$app_port
+export SLUGNAME=$slugname
+export TECH_EMAIL=llama@local.test
+export VERSION=$site_version_string
+MEOW
+# shellcheck disable=SC1091
+. "$site_env_vars_file"
+
+(
+  # Sub shell for handling of the 'cd' to the slugname directory. This
+  # allows custom 'cmd's in the site.json work relatively to the project
+  # root directory.
+  cd "$project_dir"
+  tmp_eval="$(mktemp)"
+  # Warning! The '.cmd' value is executed on the host here. The content in
+  # the site.json should be trusted, but it is a little safer to confirm
+  # with the user first.
+  jq -r \
+    '.env[] | select(.cmd != null) | .name + "=\"$(" + .cmd + ")\"; export " + .name' \
+    "$site_json_file" > "$tmp_eval"
+  # Only need to prompt the user if a cmd was set.
+  if [ -n "$(sed 's/\s//g; /^$/d' "$tmp_eval")" ]; then
+    eval "$(cat "$tmp_eval")"
+    cp "$site_json_file" "$site_json_file.original"
+    jq \
+      '(.env[] | select(.cmd != null)) |= . + {name: .name, value: $ENV[.name]}' < "$site_json_file.original" > "$site_json_file"
+    rm "$site_json_file.original"
+  fi
+  rm -f "$tmp_eval"
+)
+
+
+export ENV_FILE="$site_env_vars_file"
+export CHILLBOX_CONFIG_FILE="$chillbox_config_file"
+eval "$(jq -r '.env // [] | .[] | "export " + .name + "=" + (.value | @sh)' "$site_json_file" \
+  | "$script_dir/envsubst-site-env.sh" -c "$site_json_file")"
+
+env
+
+# TODO Create site_env_vars_file that will be passed to each container.
+# TODO Stop and remove each container
+# TODO Run the local-s3 container?
+# TODO Build and run each container depending on the .lang value
+# TODO Output logs and show the container state
+
+exit 0
+
+
+
+####
+
+
+immutable_example_hash="$(make --silent -C "$project_dir/immutable-example/" inspect.HASH)"
+immutable_example_port=8080
+
+# Hostnames can't be over 63 characters
+chill_static_example_host="$(printf '%s' "$slugname-chill-static-example-$project_name_hash" | grep -o -E '^.{0,63}')"
+chill_dynamic_example_host="$(printf '%s' "$slugname-chill-dynamic-example-$project_name_hash" | grep -o -E '^.{0,63}')"
+api_host="$(printf '%s' "$slugname-api-$project_name_hash" | grep -o -E '^.{0,63}')"
+immutable_example_host="$(printf '%s' "$slugname-immutable-example-$project_name_hash" | grep -o -E '^.{0,63}')"
+nginx_host="$(printf '%s' "$slugname-nginx-$project_name_hash" | grep -o -E '^.{0,63}')"
+
 
 cat <<MEOW > "$site_env_vars_file"
 # Generated from $0 on $(date)
