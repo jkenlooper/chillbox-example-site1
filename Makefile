@@ -1,3 +1,5 @@
+# This file was generated from the chillbox-site directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
+
 SHELL := sh
 .SHELLFLAGS := -o errexit -c
 .DEFAULT_GOAL := all
