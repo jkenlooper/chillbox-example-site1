@@ -111,8 +111,7 @@ APP_DEPENDENCIES
 ENV FLASK_APP=site1_api.app
 ENV FLASK_ENV=production
 
-# TODO set secrets for local
-ENV SECRETS_CONFIG="/var/lib/chillbox-shared-secrets/site1/api.cfg"
+ENV SECRETS_CONFIG=""
 
 ENV API_PORT=8100
 

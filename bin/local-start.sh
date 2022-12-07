@@ -67,6 +67,7 @@ mkdir -p "$site_data_home"
 mkdir -p "$site_state_home"
 
 not_encrypted_secrets_dir="$site_data_home/not-encrypted-secrets"
+site_env="$site_state_home/local-start-site-env"
 site_env_vars_file="$site_state_home/local-start-site-env-vars"
 chillbox_config_file="$site_state_home/local-chillbox-config"
 
@@ -77,7 +78,7 @@ MEOW
 # shellcheck disable=SC1091
 . "$chillbox_config_file"
 
-cat <<MEOW > "$site_env_vars_file"
+cat <<MEOW > "$site_env"
 export ARTIFACT_BUCKET_NAME=chillboxartifact
 export AWS_PROFILE=chillbox_object_storage
 export CHILLBOX_SERVER_NAME=chillbox.test
@@ -94,8 +95,21 @@ export SLUGNAME=$slugname
 export TECH_EMAIL=llama@local.test
 export VERSION=$site_version_string
 MEOW
+
+# Append the local only vars to also be exported
+cat <<MEOW >> "$site_env"
+export PROJECT_NAME_HASH=$project_name_hash
+MEOW
+
+# Hostnames can't be over 63 characters
+chill_static_example_host="$(printf '%s' "$slugname-chill-static-example-$project_name_hash" | grep -o -E '^.{0,63}')"
+chill_dynamic_example_host="$(printf '%s' "$slugname-chill-dynamic-example-$project_name_hash" | grep -o -E '^.{0,63}')"
+api_host="$(printf '%s' "$slugname-api-$project_name_hash" | grep -o -E '^.{0,63}')"
+immutable_example_host="$(printf '%s' "$slugname-immutable-example-$project_name_hash" | grep -o -E '^.{0,63}')"
+nginx_host="$(printf '%s' "$slugname-nginx-$project_name_hash" | grep -o -E '^.{0,63}')"
+
 # shellcheck disable=SC1091
-. "$site_env_vars_file"
+. "$site_env"
 
 (
   # Sub shell for handling of the 'cd' to the slugname directory. This
@@ -121,43 +135,16 @@ MEOW
 )
 
 
-export ENV_FILE="$site_env_vars_file"
+export ENV_FILE="$site_env"
 export CHILLBOX_CONFIG_FILE="$chillbox_config_file"
 eval "$(jq -r '.env // [] | .[] | "export " + .name + "=" + (.value | @sh)' "$site_json_file" \
   | "$script_dir/envsubst-site-env.sh" -c "$site_json_file")"
-
-env
-
-# TODO Create site_env_vars_file that will be passed to each container.
-# TODO Stop and remove each container
-# TODO Run the local-s3 container?
-# TODO Build and run each container depending on the .lang value
-# TODO Output logs and show the container state
-
-exit 0
-
-
-
-####
-
-
-immutable_example_hash="$(make --silent -C "$project_dir/immutable-example/" inspect.HASH)"
-immutable_example_port=8080
-
-# Hostnames can't be over 63 characters
-chill_static_example_host="$(printf '%s' "$slugname-chill-static-example-$project_name_hash" | grep -o -E '^.{0,63}')"
-chill_dynamic_example_host="$(printf '%s' "$slugname-chill-dynamic-example-$project_name_hash" | grep -o -E '^.{0,63}')"
-api_host="$(printf '%s' "$slugname-api-$project_name_hash" | grep -o -E '^.{0,63}')"
-immutable_example_host="$(printf '%s' "$slugname-immutable-example-$project_name_hash" | grep -o -E '^.{0,63}')"
-nginx_host="$(printf '%s' "$slugname-nginx-$project_name_hash" | grep -o -E '^.{0,63}')"
-
 
 cat <<MEOW > "$site_env_vars_file"
 # Generated from $0 on $(date)
 
 ARTIFACT_BUCKET_NAME=chillboxartifact
 AWS_PROFILE=chillbox_object_storage
-CHILLBOX_ARTIFACT=not-applicable
 CHILLBOX_SERVER_NAME=chillbox.test
 CHILLBOX_SERVER_PORT=80
 IMMUTABLE_BUCKET_DOMAIN_NAME=http://chillbox-minio:9000
@@ -168,39 +155,19 @@ S3_ENDPOINT_URL=http://chillbox-minio:9000
 # if needed.
 #SERVER_NAME=
 SERVER_PORT=$app_port
-SITES_ARTIFACT=not-applicable
 SLUGNAME=$slugname
 TECH_EMAIL=llama@local.test
 VERSION=$site_version_string
-
-CHILL_STATIC_EXAMPLE_TRY_FILES_LAST_PARAM=@chill-static-example
-CHILL_STATIC_EXAMPLE_PATH=/
-CHILL_STATIC_EXAMPLE_PORT=5000
-CHILL_STATIC_EXAMPLE_SCHEME=http
-CHILL_STATIC_EXAMPLE_HOST=$chill_static_example_host
-
-CHILL_DYNAMIC_EXAMPLE_PATH=/dynamic/
-CHILL_DYNAMIC_EXAMPLE_PORT=5001
-CHILL_DYNAMIC_EXAMPLE_SCHEME=http
-CHILL_DYNAMIC_EXAMPLE_HOST=$chill_dynamic_example_host
-
-API_PATH=/api/
-API_PORT=8100
-API_SCHEME=http
-API_HOST=$api_host
-
-IMMUTABLE_EXAMPLE_HASH=$immutable_example_hash
-IMMUTABLE_EXAMPLE_PATH=/immutable-example/v1/$immutable_example_hash/
-IMMUTABLE_EXAMPLE_PORT=$immutable_example_port
-IMMUTABLE_EXAMPLE_HOST=$immutable_example_host
-IMMUTABLE_EXAMPLE_URL=http://$immutable_example_host:$immutable_example_port/
 MEOW
-. "$site_env_vars_file"
+jq -r '.env // [] | .[] | .name + "=" + .value' "$site_json_file" \
+  | "$script_dir/envsubst-site-env.sh" -c "$site_json_file" >> "$site_env_vars_file"
 
+#cat "$site_env_vars_file"
 . "$script_dir/utils.sh"
 
-stop_and_rm_containers_silently "$slugname" "$project_name_hash" chill-dynamic-example api chill-static-example immutable-example nginx
+"$script_dir/local-stop.sh" -s "$slugname" "$site_json_file"
 
+# TODO Run the local-s3 container?
 chillbox_minio_state="$(docker inspect --format '{{.State.Running}}' chillbox-minio || printf "false")"
 chillbox_local_shared_secrets_state="$(docker inspect --format '{{.State.Running}}' chillbox-local-shared-secrets || printf "false")"
 if [ "${chillbox_minio_state}" = "true" ] && [ "${chillbox_local_shared_secrets_state}" = "true" ]; then
@@ -210,81 +177,99 @@ else
 fi
 
 
+# TODO Build and run each container depending on the .lang value
+services="$(jq -c '.services // [] | .[]' "$site_json_file")"
+IFS="$(printf '\n ')" && IFS="${IFS% }"
+#shellcheck disable=SC2086
+set -f -- $services
+for service_json_obj in "$@"; do
+  service_handler=""
+  service_lang=""
+  service_name=""
+  eval "$(echo "$service_json_obj" | jq -r '@sh "
+    service_handler=\(.handler)
+    service_lang=\(.lang)
+    service_name=\(.name)
+    "')"
+  echo "$service_handler $service_name $service_lang"
+  eval "$(echo "$service_json_obj" | jq -r '.environment // [] | .[] | "export " + .name + "=" + (.value | @sh)' \
+    | "$script_dir/envsubst-site-env.sh" -c "$site_json_file")"
+
+  case "$service_lang" in
+
+    immutable)
+      printf '\n\n%s\n\n' "INFO $script_name: Starting $service_lang service: $HOST"
+      set -x
+      docker image rm "$HOST" > /dev/null 2>&1 || printf ""
+      DOCKER_BUILDKIT=1 docker build \
+          --target build \
+          -t "$HOST" \
+          "$project_dir/$service_handler"
+      docker run -d \
+        --network chillboxnet \
+        --env-file "$site_env_vars_file" \
+        --mount "type=bind,src=$project_dir/$service_handler/src,dst=/build/src,readonly" \
+        --name "$HOST" \
+        "$HOST"
+      set +x
+      ;;
+
+    flask)
+      if [ ! -e "$not_encrypted_secrets_dir/$service_handler/$service_handler.secrets.cfg" ]; then
+        "$script_dir/local-secrets.sh" || echo "Ignoring error from local-secrets.sh"
+      fi
+
+      printf '\n\n%s\n\n' "INFO $script_name: Starting $service_lang service: $HOST"
+      set -x
+      docker image rm "$HOST" > /dev/null 2>&1 || printf ""
+      DOCKER_BUILDKIT=1 docker build \
+        -t "$HOST" \
+        "$project_dir/$service_handler"
+      # Switch to root user when troubleshooting or using bind mounts
+      echo "Running the $HOST container with root user."
+      docker run -d --tty \
+        --name "$HOST" \
+        --user root \
+        --env-file "$site_env_vars_file" \
+        -e HOST="localhost" \
+        -e PORT="$PORT" \
+        -e SECRETS_CONFIG="/var/lib/local-secrets/$slugname/$service_handler/$service_handler.secrets.cfg" \
+        --network chillboxnet \
+        --mount "type=bind,src=$project_dir/$service_handler/src/${slugname}_${service_handler},dst=/usr/local/src/app/src/${slugname}_${service_handler},readonly" \
+        --mount "type=bind,src=$not_encrypted_secrets_dir/$service_handler/$service_handler.secrets.cfg,dst=/var/lib/local-secrets/$slugname/$service_handler/$service_handler.secrets.cfg,readonly" \
+        "$HOST" ./flask-run.sh
+      set +x
+      ;;
+
+    chill)
+      printf '\n\n%s\n\n' "INFO $script_name: Starting $service_lang service: $HOST"
+      set -x
+      docker image rm "$HOST" > /dev/null 2>&1 || printf ""
+      DOCKER_BUILDKIT=1 docker build \
+          -t "$HOST" \
+          "$project_dir/$service_handler"
+      docker run -d \
+        --name "$HOST" \
+        --network chillboxnet \
+        --env-file "$site_env_vars_file" \
+        --mount "type=volume,src=$HOST,dst=/var/lib/chill/sqlite3" \
+        --mount "type=bind,src=$project_dir/$service_handler/documents,dst=/home/chill/app/documents" \
+        --mount "type=bind,src=$project_dir/$service_handler/queries,dst=/home/chill/app/queries" \
+        --mount "type=bind,src=$project_dir/$service_handler/templates,dst=/home/chill/app/templates" \
+        "$HOST"
+      set +x
+      ;;
+
+  esac
+
+done
+
+
+nginx_host="$(printf '%s' "$slugname-nginx-$project_name_hash" | grep -o -E '^.{0,63}')"
+
+
 # The ports on these do not need to be exposed since nginx is in front of them.
 
-build_start_immutable_example() {
-  service_handler="immutable-example"
-  host="$immutable_example_host"
-  docker image rm "$host" > /dev/null 2>&1 || printf ""
-  DOCKER_BUILDKIT=1 docker build \
-      --target build \
-      -t "$host" \
-      "$project_dir/$service_handler"
-  docker run -d \
-    --network chillboxnet \
-    --env-file "$site_env_vars_file" \
-    --mount "type=bind,src=$project_dir/$service_handler/src,dst=/build/src,readonly" \
-    --name "$host" \
-    "$host"
-}
-
-build_start_api() {
-  service_handler="api"
-  host="$api_host"
-  docker image rm "$host" > /dev/null 2>&1 || printf ""
-  DOCKER_BUILDKIT=1 docker build \
-    -t "$host" \
-    "$project_dir/$service_handler"
-  # Switch to root user when troubleshooting or using bind mounts
-  echo "Running the $host container with root user."
-  docker run -d --tty \
-    --name "$host" \
-    --user root \
-    --env-file "$site_env_vars_file" \
-    -e HOST="localhost" \
-    -e PORT="$API_PORT" \
-    -e SECRETS_CONFIG="/var/lib/local-secrets/site1/api/api-bridge.secrets.cfg" \
-    --network chillboxnet \
-    --mount "type=bind,src=$project_dir/api/src/site1_api,dst=/usr/local/src/app/src/site1_api,readonly" \
-    --mount "type=bind,src=$not_encrypted_secrets_dir/api/api-bridge.secrets.cfg,dst=/var/lib/local-secrets/site1/api/api-bridge.secrets.cfg,readonly" \
-    "$host" ./flask-run.sh
-}
-
-build_start_chill_static_example() {
-  service_handler="chill-static-example"
-  host="$chill_static_example_host"
-  docker image rm "$host" > /dev/null 2>&1 || printf ""
-  DOCKER_BUILDKIT=1 docker build \
-      -t "$host" \
-      "$project_dir/$service_handler"
-  docker run -d \
-    --name "$host" \
-    --network chillboxnet \
-    --env-file "$site_env_vars_file" \
-    --mount "type=volume,src=$host,dst=/var/lib/chill/sqlite3" \
-    --mount "type=bind,src=$project_dir/$service_handler/documents,dst=/home/chill/app/documents" \
-    --mount "type=bind,src=$project_dir/$service_handler/queries,dst=/home/chill/app/queries" \
-    --mount "type=bind,src=$project_dir/$service_handler/templates,dst=/home/chill/app/templates" \
-    "$host"
-}
-
-build_start_chill_dynamic_example() {
-  service_handler="chill-dynamic-example"
-  host="$chill_dynamic_example_host"
-  docker image rm "$host" > /dev/null 2>&1 || printf ""
-  DOCKER_BUILDKIT=1 docker build \
-      -t "$host" \
-      "$project_dir/$service_handler"
-  docker run -d \
-    --name "$host" \
-    --network chillboxnet \
-    --env-file "$site_env_vars_file" \
-    --mount "type=volume,src=$host,dst=/var/lib/chill/sqlite3" \
-    --mount "type=bind,src=$project_dir/$service_handler/documents,dst=/home/chill/app/documents" \
-    --mount "type=bind,src=$project_dir/$service_handler/queries,dst=/home/chill/app/queries" \
-    --mount "type=bind,src=$project_dir/$service_handler/templates,dst=/home/chill/app/templates" \
-    "$host"
-}
 
 build_start_nginx() {
   #TODO Read from local.site.json and get env_names_to_expand_via_site_json to pass to nginx. Or pass the local.site.json to nginx container?
@@ -303,16 +288,9 @@ build_start_nginx() {
     "$host"
 }
 
-if [ ! -e "$not_encrypted_secrets_dir/api/api-bridge.secrets.cfg" ]; then
-  "$script_dir/local-secrets.sh" || echo "Ignoring error from local-secrets.sh"
-fi
-
-build_start_immutable_example
-build_start_api
-build_start_chill_static_example
-build_start_chill_dynamic_example
 build_start_nginx
 
+# TODO Output logs and show the container state
 sleep 2
 output_all_logs_on_containers "$slugname" "$project_name_hash" chill-dynamic-example api chill-static-example immutable-example nginx
 

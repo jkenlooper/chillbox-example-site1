@@ -52,7 +52,7 @@ project_name_hash="$(printf "%s" "$project_dir" | md5sum | cut -d' ' -f1)"
 test "${#project_name_hash}" -eq "32" || (echo "ERROR $script_name: Failed to create a project name hash from the project dir ($project_dir)" && exit 1)
 . "$script_dir/utils.sh"
 
-site_json_file_dir="$(dirname "$site_json_file")"
+#site_json_file_dir="$(dirname "$site_json_file")"
 
 services="$(jq -c '.services // [] | .[]' "$site_json_file")"
 IFS="$(printf '\n ')" && IFS="${IFS% }"
