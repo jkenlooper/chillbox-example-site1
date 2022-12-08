@@ -10,7 +10,6 @@ Do not input sensitive information when using this script.
 *** WARNING ***
 "
 
-slugname=site1
 
 script_dir="$(dirname "$(realpath "$0")")"
 project_dir="$(dirname "${script_dir}")"
@@ -18,15 +17,6 @@ script_name="$(basename "$0")"
 project_dir_basename="$(basename "$project_dir")"
 project_name_hash="$(printf "%s" "$project_dir" | md5sum | cut -d' ' -f1)"
 test "${#project_name_hash}" -eq "32" || (echo "ERROR $script_name: Failed to create a project name hash from the project dir ($project_dir)" && exit 1)
-
-# Storing the local development secrets in the user data directory for this site
-# depending on the project directory path at the time.
-# https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
-site_data_home="${XDG_DATA_HOME:-"$HOME/.local/share"}/$project_dir_basename-$slugname--$project_name_hash"
-
-not_encrypted_secrets_dir="$site_data_home/not-encrypted-secrets"
-
-not_secure_key_dir="$site_data_home/not-secure-keys"
 
 
 usage() {
@@ -42,18 +32,50 @@ should not be considered sensitive. Do not use secrets that can be used outside
 of the local machine like credentials or API keys to third party services.
 
 The local development of a site should not need access to remote services.
+
+Usage:
+  $script_name -h
+  $script_name -s <slugname> <site_json_file>
+
+Options:
+  -h                  Show this help message.
+
+  -s <slugname>       Set the slugname.
+
+Args:
+  <site_json_file>    Site json file with services.
+
 HERE
 }
 
-while getopts "h" OPTION ; do
+slugname=""
+
+while getopts "hs:" OPTION ; do
   case "$OPTION" in
     h) usage
        exit 0 ;;
+    s) slugname=$OPTARG ;;
     ?) usage
        exit 1 ;;
   esac
 done
+shift $((OPTIND - 1))
 
+site_json_file="$1"
+
+test -n "$slugname" || (echo "ERROR $script_name: No slugname set." >&2 && usage && exit 1)
+test -n "$site_json_file" || (echo "ERROR $script_name: No argument set for the site json file." >&2 && usage && exit 1)
+site_json_file="$(realpath "$site_json_file")"
+test -f "$site_json_file" || (echo "ERROR $script_name: The $site_json_file is not a file." >&2 && usage && exit 1)
+
+# Storing the local development secrets in the user data directory for this site
+# depending on the project directory path at the time.
+# https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+site_data_home="${XDG_DATA_HOME:-"$HOME/.local/share"}/$project_dir_basename-$slugname--$project_name_hash"
+
+not_encrypted_secrets_dir="$site_data_home/not-encrypted-secrets"
+
+not_secure_key_dir="$site_data_home/not-secure-keys"
 
 # The fake-encrypt-file script closely matches the encrypt-file from the
 # chillbox repository.
@@ -151,8 +173,6 @@ export DOCKER_BUILDKIT=1
     -t "$sleeper_image" \
     -
 
-#TODO get site json file as an arg.
-site_json_file="$project_dir/local.site.json"
 version="0.0.0-local+$project_name_hash"
 
 services="$(jq -c '.services // [] | .[]' "$site_json_file")"

@@ -27,7 +27,7 @@ HERE
 
 slugname=""
 
-while getopts "hs:t:" OPTION ; do
+while getopts "hs:" OPTION ; do
   case "$OPTION" in
     h) usage
        exit 0 ;;
@@ -45,8 +45,6 @@ test -n "$site_json_file" || (echo "ERROR $script_name: No argument set for the 
 site_json_file="$(realpath "$site_json_file")"
 test -f "$site_json_file" || (echo "ERROR $script_name: The $site_json_file is not a file." >&2 && usage && exit 1)
 
-
-# TODO build and start containers
 app_port=8088
 script_dir="$(dirname "$(realpath "$0")")"
 project_dir="$(dirname "${script_dir}")"
@@ -87,9 +85,8 @@ export IMMUTABLE_BUCKET_DOMAIN_NAME=http://chillbox-minio:9000
 export IMMUTABLE_BUCKET_NAME=chillboximmutable
 export LETS_ENCRYPT_SERVER=letsencrypt_test
 export S3_ENDPOINT_URL=http://chillbox-minio:9000
-# Not setting server_name to allow it to be set differently in each Dockerfile
-# if needed.
-#SERVER_NAME=
+# SERVER_NAME is set to empty string so nginx will not require Host header; which is useful for local development.
+export SERVER_NAME='""'
 export SERVER_PORT=$app_port
 export SLUGNAME=$slugname
 export TECH_EMAIL=llama@local.test
@@ -177,7 +174,6 @@ else
 fi
 
 
-# TODO Build and run each container depending on the .lang value
 services="$(jq -c '.services // [] | .[]' "$site_json_file")"
 IFS="$(printf '\n ')" && IFS="${IFS% }"
 #shellcheck disable=SC2086
@@ -195,6 +191,7 @@ for service_json_obj in "$@"; do
   eval "$(echo "$service_json_obj" | jq -r '.environment // [] | .[] | "export " + .name + "=" + (.value | @sh)' \
     | "$script_dir/envsubst-site-env.sh" -c "$site_json_file")"
 
+  # The ports on these do not need to be exposed since nginx is in front of them.
   case "$service_lang" in
 
     immutable)
@@ -216,7 +213,7 @@ for service_json_obj in "$@"; do
 
     flask)
       if [ ! -e "$not_encrypted_secrets_dir/$service_handler/$service_handler.secrets.cfg" ]; then
-        "$script_dir/local-secrets.sh" || echo "Ignoring error from local-secrets.sh"
+        "$script_dir/local-secrets.sh" -s "$slugname" "$site_json_file" || echo "Ignoring error from local-secrets.sh"
       fi
 
       printf '\n\n%s\n\n' "INFO $script_name: Starting $service_lang service: $HOST"
@@ -264,15 +261,8 @@ for service_json_obj in "$@"; do
 
 done
 
-
 nginx_host="$(printf '%s' "$slugname-nginx-$project_name_hash" | grep -o -E '^.{0,63}')"
-
-
-# The ports on these do not need to be exposed since nginx is in front of them.
-
-
 build_start_nginx() {
-  #TODO Read from local.site.json and get env_names_to_expand_via_site_json to pass to nginx. Or pass the local.site.json to nginx container?
   service_handler="nginx"
   host="$nginx_host"
   docker image rm "$host" > /dev/null 2>&1 || printf ""
@@ -284,20 +274,23 @@ build_start_nginx() {
     --name "$host" \
     --network chillboxnet \
     --env-file "$site_env_vars_file" \
-    --mount "type=bind,src=$project_dir/$service_handler/templates,dst=/build/templates" \
+    -e CHILLBOX_ARTIFACT \
+    -e SITES_ARTIFACT \
+    -e PROJECT_NAME_HASH \
+    -e ENV_FILE=/build/local-start-site-env \
+    -e CHILLBOX_CONFIG_FILE=/build/local-chillbox-config \
+    --mount "type=bind,src=$ENV_FILE,dst=/build/local-start-site-env,readonly" \
+    --mount "type=bind,src=$CHILLBOX_CONFIG_FILE,dst=/build/local-chillbox-config,readonly" \
+    --mount "type=bind,src=$project_dir/$service_handler/templates,dst=/build/templates,readonly" \
+    --mount "type=bind,src=$project_dir/bin/envsubst-site-env.sh,dst=/build/envsubst-site-env.sh,readonly" \
+    --mount "type=bind,src=$site_json_file,dst=/build/local.site.json,readonly" \
     "$host"
 }
-
 build_start_nginx
 
-# TODO Output logs and show the container state
 sleep 2
-output_all_logs_on_containers "$slugname" "$project_name_hash" chill-dynamic-example api chill-static-example immutable-example nginx
+output_all_logs_on_containers "$slugname" "$project_name_hash" "$site_json_file"
 
-show_container_state "$slugname" "$project_name_hash" chill-dynamic-example api chill-static-example immutable-example nginx
+show_container_state "$slugname" "$project_name_hash" "$site_json_file"
 
 echo "The $slugname site is running on http://localhost:$app_port/ "
-
-
-
-#docker logs --follow $slugname-nginx

@@ -44,7 +44,6 @@ test -n "$site_json_file" || (echo "ERROR $script_name: No argument set for the 
 site_json_file="$(realpath "$site_json_file")"
 test -f "$site_json_file" || (echo "ERROR $script_name: The $site_json_file is not a file." >&2 && usage && exit 1)
 
-
 script_dir="$(dirname "$(realpath "$0")")"
 project_dir="$(dirname "${script_dir}")"
 script_name="$(basename "$0")"
@@ -52,19 +51,4 @@ project_name_hash="$(printf "%s" "$project_dir" | md5sum | cut -d' ' -f1)"
 test "${#project_name_hash}" -eq "32" || (echo "ERROR $script_name: Failed to create a project name hash from the project dir ($project_dir)" && exit 1)
 . "$script_dir/utils.sh"
 
-#site_json_file_dir="$(dirname "$site_json_file")"
-
-services="$(jq -c '.services // [] | .[]' "$site_json_file")"
-IFS="$(printf '\n ')" && IFS="${IFS% }"
-#shellcheck disable=SC2086
-set -f -- $services
-for service_json_obj in "$@"; do
-  service_handler=""
-  eval "$(echo "$service_json_obj" | jq -r '@sh "
-    service_handler=\(.handler)
-    "')"
-  echo "$service_handler"
-  stop_and_rm_containers_silently "$slugname" "$project_name_hash" "$service_handler"
-done
-
-stop_and_rm_containers_silently "$slugname" "$project_name_hash" nginx
+stop_and_rm_containers_silently "$slugname" "$project_name_hash" "$site_json_file"
