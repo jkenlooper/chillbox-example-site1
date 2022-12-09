@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
+# This file was generated from the chillbox-site directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
+
 set -o errexit
 
 script_name="$(basename "$0")"
@@ -45,7 +47,7 @@ test -n "$site_json_file" || (echo "ERROR $script_name: No argument set for the 
 site_json_file="$(realpath "$site_json_file")"
 test -f "$site_json_file" || (echo "ERROR $script_name: The $site_json_file is not a file." >&2 && usage && exit 1)
 
-app_port=8088
+app_port=8080
 script_dir="$(dirname "$(realpath "$0")")"
 project_dir="$(dirname "${script_dir}")"
 site_version_string="$(make --silent -C "$project_dir" inspect.VERSION)"
@@ -165,14 +167,15 @@ jq -r '.env // [] | .[] | .name + "=" + .value' "$site_json_file" \
 "$script_dir/local-stop.sh" -s "$slugname" "$site_json_file"
 
 # TODO Run the local-s3 container?
-chillbox_minio_state="$(docker inspect --format '{{.State.Running}}' chillbox-minio || printf "false")"
-chillbox_local_shared_secrets_state="$(docker inspect --format '{{.State.Running}}' chillbox-local-shared-secrets || printf "false")"
-if [ "${chillbox_minio_state}" = "true" ] && [ "${chillbox_local_shared_secrets_state}" = "true" ]; then
-  echo "chillbox local is running"
-else
-  "${project_dir}/local-s3/local-chillbox.sh"
+if [ -d "${project_dir}/local-s3" ]; then
+  chillbox_minio_state="$(docker inspect --format '{{.State.Running}}' chillbox-minio || printf "false")"
+  chillbox_local_shared_secrets_state="$(docker inspect --format '{{.State.Running}}' chillbox-local-shared-secrets || printf "false")"
+  if [ "${chillbox_minio_state}" = "true" ] && [ "${chillbox_local_shared_secrets_state}" = "true" ]; then
+    echo "chillbox local is running"
+  else
+    "${project_dir}/local-s3/local-chillbox.sh"
+  fi
 fi
-
 
 services="$(jq -c '.services // [] | .[]' "$site_json_file")"
 IFS="$(printf '\n ')" && IFS="${IFS% }"
@@ -202,7 +205,7 @@ for service_json_obj in "$@"; do
           --target build \
           -t "$HOST" \
           "$project_dir/$service_handler"
-      docker run -d \
+      docker run -d --tty \
         --network chillboxnet \
         --env-file "$site_env_vars_file" \
         --mount "type=bind,src=$project_dir/$service_handler/src,dst=/build/src,readonly" \
