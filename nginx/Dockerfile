@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1.4.3
 
+# This file was generated from the chillbox-site directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
+
 # UPKEEP due: "2023-01-23" label: "NGINX base image" interval: "+5 months"
 # docker pull nginx:1.22.0-alpine
 # docker image ls --digests alpine
