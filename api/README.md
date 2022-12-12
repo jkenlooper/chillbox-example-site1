@@ -14,5 +14,5 @@ cookiecutter --directory flask-service \
   https://github.com/jkenlooper/cookiecutters.git \
   slugname=site1 \
   project_slug=api \
-  project_port=8084
+  project_port=8011
 ```

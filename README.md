@@ -14,5 +14,6 @@ cookiecutter --directory chillbox-site \
   --no-input \
   https://github.com/jkenlooper/cookiecutters.git \
   slugname=site1 \
+  local_app_port=38010 \
   chillbox_site_directory=.
 ```

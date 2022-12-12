@@ -2,7 +2,6 @@
 !/MANIFEST.in
 !/pyproject.toml
 !/requirements.txt
-!/README.md
 !/setup.cfg
 !/setup.py
 !/src/*

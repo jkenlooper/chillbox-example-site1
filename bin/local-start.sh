@@ -47,7 +47,7 @@ test -n "$site_json_file" || (echo "ERROR $script_name: No argument set for the 
 site_json_file="$(realpath "$site_json_file")"
 test -f "$site_json_file" || (echo "ERROR $script_name: The $site_json_file is not a file." >&2 && usage && exit 1)
 
-app_port=8080
+app_port=38010
 script_dir="$(dirname "$(realpath "$0")")"
 project_dir="$(dirname "${script_dir}")"
 site_version_string="$(make --silent -C "$project_dir" inspect.VERSION)"

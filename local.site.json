@@ -37,7 +37,7 @@
     },
     {
       "name": "CHILL_STATIC_EXAMPLE_PORT",
-      "value": "5000"
+      "value": "38011"
     },
     {
       "name": "CHILL_DYNAMIC_EXAMPLE_PATH",
@@ -45,7 +45,7 @@
     },
     {
       "name": "CHILL_DYNAMIC_EXAMPLE_PORT",
-      "value": "5001"
+      "value": "38012"
     },
     {
       "name": "CHILL_DYNAMIC_EXAMPLE_SCHEME",
@@ -66,7 +66,7 @@
     },
     {
       "name": "API_PORT",
-      "value": "8084"
+      "value": "38013"
     },
     {
       "name": "API_SCHEME",
@@ -83,7 +83,7 @@
     },
     {
       "name": "IMMUTABLE_EXAMPLE_PORT",
-      "value": "8080"
+      "value": "38014"
     },
     {
       "name": "IMMUTABLE_EXAMPLE_PATH",
