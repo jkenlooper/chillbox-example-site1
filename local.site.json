@@ -28,8 +28,8 @@
     },
     {
       "name": "CHILL_STATIC_EXAMPLE_HOST",
-      "value": "$SLUGNAME-chill-static-example-$PROJECT_NAME_HASH",
-      "cmd": "printf '%s' '$SLUGNAME-chill-static-example-$PROJECT_NAME_HASH' | grep -o -E '^.{0,63}'"
+      "value": "$SLUGNAME-chillstatic-$PROJECT_NAME_HASH",
+      "cmd": "printf '%s' '$SLUGNAME-chillstatic-$PROJECT_NAME_HASH' | grep -o -E '^.{0,63}'"
     },
     {
       "name": "CHILL_STATIC_EXAMPLE_HOST__chillbox",
@@ -53,8 +53,8 @@
     },
     {
       "name": "CHILL_DYNAMIC_EXAMPLE_HOST",
-      "value": "$SLUGNAME-chill-dynamic-example-$PROJECT_NAME_HASH",
-      "cmd": "printf '%s' '$SLUGNAME-chill-dynamic-example-$PROJECT_NAME_HASH' | grep -o -E '^.{0,63}'"
+      "value": "$SLUGNAME-chilldynamic-$PROJECT_NAME_HASH",
+      "cmd": "printf '%s' '$SLUGNAME-chilldynamic-$PROJECT_NAME_HASH' | grep -o -E '^.{0,63}'"
     },
     {
       "name": "CHILL_DYNAMIC_EXAMPLE_HOST__chillbox",
