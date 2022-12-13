@@ -19,6 +19,11 @@ apk add mandoc man-pages docs
 apk add vim
 DEPENDENCIES
 
+RUN <<DEV_USER
+addgroup -g 44444 dev
+adduser -u 44444 -G dev -s /bin/sh -D dev
+DEV_USER
+
 ARG SECRETS_CONFIG=api.secrets.cfg
 ENV SECRETS_CONFIG=$SECRETS_CONFIG
 ARG CHILLBOX_PUBKEY_DIR
@@ -54,6 +59,7 @@ test -x "$CHILLBOX_PUBKEY_DIR/$ENCRYPT_FILE" || (echo "ERROR $0: The encrypt fil
 
 mkdir -p "$TMPFS_DIR/secrets/"
 mkdir -p "$SERVICE_PERSISTENT_DIR"
+chown -R dev:dev "$TMPFS_DIR/secrets/"
 
 
 printf "Example of prompt for adding secrets. The input is hidden."
@@ -82,6 +88,8 @@ ANSWER1="$first_answer"
 ANSWER2="$second_answer"
 ANSWER5="$fifth_answer"
 SECRETS
+
+
 cleanup() {
 	shred -fu "$TMPFS_DIR/secrets/$SECRETS_CONFIG" || rm -f "$TMPFS_DIR/secrets/$SECRETS_CONFIG"
 }
@@ -102,5 +110,7 @@ HERE
 chmod +x /usr/local/src/secrets/secrets-prompt.sh
 
 SECRETS_PROMPT_SH
+
+COPY --chown=dev
 
 ENTRYPOINT ["/usr/local/src/secrets/secrets-prompt.sh"]
