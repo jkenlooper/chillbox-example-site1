@@ -59,36 +59,10 @@ test -x "$CHILLBOX_PUBKEY_DIR/$ENCRYPT_FILE" || (echo "ERROR $0: The encrypt fil
 
 mkdir -p "$TMPFS_DIR/secrets/"
 mkdir -p "$SERVICE_PERSISTENT_DIR"
-chown -R dev:dev "$TMPFS_DIR/secrets/"
 
-
-printf "Example of prompt for adding secrets. The input is hidden."
-printf "\n\n"
-
-printf "\nQuestion 1: "
-stty -echo
-read first_answer
-stty echo
-
-printf "\nQuestion 2: "
-stty -echo
-read second_answer
-stty echo
-
-printf "\nQuestion 5: "
-stty -echo
-read fifth_answer
-stty echo
-
-printf "\nAll done."
-printf "\n\n"
-
-cat <<SECRETS > "$TMPFS_DIR/secrets/$SECRETS_CONFIG"
-ANSWER1="$first_answer"
-ANSWER2="$second_answer"
-ANSWER5="$fifth_answer"
-SECRETS
-
+# Allow the prompt for secrets to be customizable depending on the service.
+touch "$TMPFS_DIR/secrets/$SECRETS_CONFIG"
+/usr/local/src/secrets/secrets.sh "$TMPFS_DIR/secrets/$SECRETS_CONFIG"
 
 cleanup() {
 	shred -fu "$TMPFS_DIR/secrets/$SECRETS_CONFIG" || rm -f "$TMPFS_DIR/secrets/$SECRETS_CONFIG"
@@ -111,6 +85,9 @@ chmod +x /usr/local/src/secrets/secrets-prompt.sh
 
 SECRETS_PROMPT_SH
 
-COPY --chown=dev
+COPY ./secrets.sh /usr/local/src/secrets/secrets.sh
+
+# TODO Switch to dev user to be more secure.
+#USER dev
 
 ENTRYPOINT ["/usr/local/src/secrets/secrets-prompt.sh"]
