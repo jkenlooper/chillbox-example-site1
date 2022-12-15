@@ -8,7 +8,7 @@ from site1_api.app import create_app  # noqa: E402
 
 
 def main():
-    ""
+    """"""
     from gevent import pywsgi, signal_handler
     import signal
 
