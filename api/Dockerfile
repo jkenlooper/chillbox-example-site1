@@ -5,48 +5,6 @@
 # UPKEEP due: "2023-01-10" label: "Alpine Linux base image" interval: "+3 months"
 # docker pull alpine:3.16.2
 # docker image ls --digests alpine
-FROM alpine:3.16.2@sha256:bc41182d7ef5ffc53a40b044e725193bc10142a1243f395ee852a8d9730fc2ad as build
-
-## Build dependencies
-WORKDIR /usr/local/src/app-venv
-COPY requirements.txt ./
-RUN <<BUILD_DEPENDENCIES
-set -o errexit
-apk update
-apk add --no-cache \
-  gcc \
-  python3 \
-  python3-dev \
-  libffi-dev \
-  build-base \
-  musl-dev
-
-ln -s /usr/bin/python3 /usr/bin/python
-python -m venv .
-/usr/local/src/app-venv/bin/pip install --upgrade pip wheel
-/usr/local/src/app-venv/bin/pip install --disable-pip-version-check --compile -r requirements.txt
-apk --purge del \
-  gcc \
-  python3-dev \
-  libffi-dev \
-  build-base \
-  musl-dev
-BUILD_DEPENDENCIES
-
-WORKDIR /usr/local/src/app
-#TODO need to copy all of it here?
-COPY . ./
-RUN <<PIP_INSTALL_APP
-set -o errexit
-/usr/local/src/app-venv/bin/pip install --disable-pip-version-check --compile .
-export PATH=/usr/local/src/app-venv/bin/:$PATH
-PIP_INSTALL_APP
-
-## Stage 2
-
-# UPKEEP due: "2023-01-10" label: "Alpine Linux base image" interval: "+3 months"
-# docker pull alpine:3.16.2
-# docker image ls --digests alpine
 FROM alpine:3.16.2@sha256:bc41182d7ef5ffc53a40b044e725193bc10142a1243f395ee852a8d9730fc2ad
 
 RUN <<DEV_USER
@@ -55,15 +13,8 @@ adduser -u 44444 -G dev -s /bin/sh -D dev
 DEV_USER
 
 WORKDIR /usr/local/src/
-COPY --from=build --chown=dev /usr/local/src/app-venv /usr/local/src/app-venv
-COPY --from=build --chown=dev /usr/local/src/app /usr/local/src/app
 
-ENV PATH=/usr/local/src/app-venv/bin/:$PATH
-
-ARG FLASK_INSTANCE_PATH=/var/lib/site1/
-ENV FLASK_INSTANCE_PATH=$FLASK_INSTANCE_PATH
-
-RUN <<APP_DEPENDENCIES
+RUN <<SERVICE_DEPENDENCIES
 set -o errexit
 apk update
 # Support python services and python Pillow
@@ -100,15 +51,54 @@ apk add --no-cache \
   zlib \
   zlib-dev
 
-ln -s /usr/bin/python3 /usr/bin/python
+# Support for python flask with gunicorn and gevent
+apk add --no-cache \
+  -q --no-progress \
+  py3-gunicorn
 
+ln -s /usr/bin/python3 /usr/bin/python
+SERVICE_DEPENDENCIES
+
+ENV PATH=/usr/local/src/app-venv/bin/:$PATH
+ARG FLASK_INSTANCE_PATH=/var/lib/site1/
+ENV FLASK_INSTANCE_PATH=$FLASK_INSTANCE_PATH
+RUN <<FLASK_SETUP
+set -o errexit
+mkdir -p /usr/local/src/app
 mkdir -p $FLASK_INSTANCE_PATH
 chown -R dev:dev $FLASK_INSTANCE_PATH
 
 mkdir -p /usr/local/src/app
 chown -R dev:dev /usr/local/src/app
+FLASK_SETUP
 
-APP_DEPENDENCIES
+ARG LOCAL_PYTHON_PACKAGES=/var/lib/chillbox/python
+ENV LOCAL_PYTHON_PACKAGES=$LOCAL_PYTHON_PACKAGES
+COPY requirements.txt /usr/local/src/app/requirements.txt
+RUN <<PIP_INSTALL_REQ
+set -o errexit
+mkdir -p "$LOCAL_PYTHON_PACKAGES"
+/usr/bin/pip3 install --upgrade pip wheel
+#/usr/bin/pip3 install --disable-pip-version-check --compile -r /usr/local/src/app/requirements.txt
+/usr/bin/pip3 download --disable-pip-version-check \
+    --destination-directory "$LOCAL_PYTHON_PACKAGES" \
+    -r /usr/local/src/app/requirements.txt
+PIP_INSTALL_REQ
+
+COPY pyproject.toml /usr/local/src/app/pyproject.toml
+COPY setup.cfg /usr/local/src/app/setup.cfg
+COPY setup.py /usr/local/src/app/setup.py
+COPY README.md /usr/local/src/app/README.md
+COPY src /usr/local/src/app/src
+RUN <<PIP_INSTALL_APP
+set -o errexit
+
+# Only pip install with the local python packages cache.
+/usr/bin/pip3 install --disable-pip-version-check --compile \
+    --no-index --find-links="$LOCAL_PYTHON_PACKAGES" \
+    -e .
+
+PIP_INSTALL_APP
 
 ENV FLASK_APP=site1_api.app
 ENV FLASK_ENV=production
@@ -136,8 +126,11 @@ if [ "${current_user}" != "root" ]; then
   exit 1
 fi
 
-# pip install in editable mode
-/usr/local/src/app-venv/bin/pip install --disable-pip-version-check -e .
+# # pip install in editable mode
+# /usr/bin/python3 -m venv /usr/local/src/app-venv
+# /usr/local/src/app-venv/bin/pip install --disable-pip-version-check \
+#     --no-index --find-links="$LOCAL_PYTHON_PACKAGES" \
+#     -e .
 
 export FLASK_ENV=development
 
