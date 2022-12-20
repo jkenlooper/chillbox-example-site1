@@ -12,7 +12,7 @@ addgroup -g 44444 dev
 adduser -u 44444 -G dev -s /bin/sh -D dev
 DEV_USER
 
-WORKDIR /usr/local/src/
+WORKDIR /usr/local/src/app/
 
 RUN <<SERVICE_DEPENDENCIES
 set -o errexit
@@ -78,11 +78,13 @@ COPY requirements.txt /usr/local/src/app/requirements.txt
 RUN <<PIP_INSTALL_REQ
 set -o errexit
 mkdir -p "$LOCAL_PYTHON_PACKAGES"
-/usr/bin/pip3 install --upgrade pip wheel
+/usr/bin/pip3 download \
+    --destination-directory "$LOCAL_PYTHON_PACKAGES" \
+    pip wheel
 #/usr/bin/pip3 install --disable-pip-version-check --compile -r /usr/local/src/app/requirements.txt
 /usr/bin/pip3 download --disable-pip-version-check \
     --destination-directory "$LOCAL_PYTHON_PACKAGES" \
-    -r /usr/local/src/app/requirements.txt
+    -r /usr/local/src/app/requirements.txt || echo 'ignore'
 PIP_INSTALL_REQ
 
 COPY pyproject.toml /usr/local/src/app/pyproject.toml
@@ -94,9 +96,10 @@ RUN <<PIP_INSTALL_APP
 set -o errexit
 
 # Only pip install with the local python packages cache.
-/usr/bin/pip3 install --disable-pip-version-check --compile \
+/usr/bin/python3 -m venv /usr/local/src/app-venv
+/usr/local/src/app-venv/bin/pip3 install --disable-pip-version-check --compile \
     --no-index --find-links="$LOCAL_PYTHON_PACKAGES" \
-    -e .
+    -e /usr/local/src/app || echo 'ignore'
 
 PIP_INSTALL_APP
 
@@ -110,9 +113,19 @@ ENV API_PORT=8100
 
 ENV SERVER_NAME="localhost"
 
-WORKDIR /usr/local/src/app/
 
 RUN <<FILEWATCH_SUPPORT
+cat <<'SLEEP_SH' > sleep.sh
+#!/usr/bin/env sh
+
+set -o errexit
+echo "Sleeping."
+while true; do
+  printf "."
+  sleep 60
+done
+SLEEP_SH
+chmod +x sleep.sh
 
 cat <<'FLASK_RUN_SH' > flask-run.sh
 #!/usr/bin/env sh

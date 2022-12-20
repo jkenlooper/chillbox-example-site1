@@ -251,6 +251,31 @@ for service_json_obj in "$@"; do
         --mount "type=bind,src=$not_encrypted_secrets_dir/$service_handler/$secrets_config,dst=/var/lib/local-secrets/$slugname/$service_handler/$secrets_config,readonly" \
         "$image_name" ./flask-run.sh
       set +x
+      sleep 2
+      container_status="$(docker container inspect $container_name | jq -r '.[0].State.Status')"
+      if [ "$container_status" = "exited" ]; then
+        docker logs "$container_name"
+        echo "ERROR $script_name: Failed to start $service_lang service: $container_name"
+        echo "Start this container in debug mode? [y/n] "
+        read -r confirm
+        if [ "$confirm" = "y" ]; then
+          printf '\n\n%s\n\n' "INFO $script_name: Debugging $service_lang service: $container_name"
+          docker container rm "$container_name" > /dev/null 2>&1 || printf ''
+          set -x
+          docker run -d --tty \
+            --name "$container_name" \
+            --user root \
+            --env-file "$site_env_vars_file" \
+            -e HOST="localhost" \
+            -e PORT="$PORT" \
+            -e SECRETS_CONFIG="/var/lib/local-secrets/$slugname/$service_handler/$secrets_config" \
+            --network chillboxnet \
+            --mount "type=bind,src=$project_dir/$service_handler/src/${slugname}_${service_handler},dst=/usr/local/src/app/src/${slugname}_${service_handler},readonly" \
+            --mount "type=bind,src=$not_encrypted_secrets_dir/$service_handler/$secrets_config,dst=/var/lib/local-secrets/$slugname/$service_handler/$secrets_config,readonly" \
+            "$image_name" ./sleep.sh
+          set +x
+        fi
+      fi
       ;;
 
     chill)
