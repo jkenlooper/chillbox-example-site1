@@ -59,7 +59,19 @@ apk add --no-cache \
 ln -s /usr/bin/python3 /usr/bin/python
 SERVICE_DEPENDENCIES
 
-ENV PATH=/usr/local/src/app-venv/bin/:$PATH
+RUN  <<PYTHON_VIRTUALENV
+# Setup for python virtual env
+set -o errexit
+mkdir -p /usr/local/src/app
+/usr/bin/python3 -m venv /usr/local/src/app/.venv
+# The dev user will need write access since pip install will be adding files to
+# the .venv directory.
+chown -R dev:dev /usr/local/src/app/.venv
+PYTHON_VIRTUALENV
+# Activate python virtual env by updating the PATH
+ENV VIRTUAL_ENV=/usr/local/src/app/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
 ARG FLASK_INSTANCE_PATH=/var/lib/site1/
 ENV FLASK_INSTANCE_PATH=$FLASK_INSTANCE_PATH
 RUN <<FLASK_SETUP
@@ -74,6 +86,8 @@ FLASK_SETUP
 
 ARG LOCAL_PYTHON_PACKAGES=/var/lib/chillbox/python
 ENV LOCAL_PYTHON_PACKAGES=$LOCAL_PYTHON_PACKAGES
+
+
 COPY requirements.txt /usr/local/src/app/requirements.txt
 RUN <<PIP_INSTALL_REQ
 set -o errexit
@@ -96,8 +110,8 @@ RUN <<PIP_INSTALL_APP
 set -o errexit
 
 # Only pip install with the local python packages cache.
-/usr/bin/python3 -m venv /usr/local/src/app-venv
-/usr/local/src/app-venv/bin/pip3 install --disable-pip-version-check --compile \
+/usr/bin/python3 -m venv /usr/local/src/app/.venv
+/usr/local/src/app/.venv/bin/pip3 install --disable-pip-version-check --compile \
     --no-index --find-links="$LOCAL_PYTHON_PACKAGES" \
     -e /usr/local/src/app || echo 'ignore'
 
@@ -147,10 +161,10 @@ fi
 
 export FLASK_ENV=development
 
-/usr/local/src/app-venv/bin/flask init-db
+/usr/local/src/app/.venv/bin/flask init-db
 
 # Setting host to 0.0.0.0 (externally visible) to work with docker network.
-/usr/local/src/app-venv/bin/flask run \
+/usr/local/src/app/.venv/bin/flask run \
   --port "$API_PORT" \
   --host "0.0.0.0"
 
@@ -167,4 +181,4 @@ FILEWATCH_SUPPORT
 
 USER dev
 
-CMD ["/usr/local/src/app-venv/bin/start"]
+CMD ["/usr/local/src/app/.venv/bin/start"]
