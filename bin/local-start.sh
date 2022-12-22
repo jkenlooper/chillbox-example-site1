@@ -245,6 +245,7 @@ for service_json_obj in "$@"; do
         --env-file "$site_env_vars_file" \
         -e HOST="localhost" \
         -e PORT="$PORT" \
+        -e FLASK_DEBUG="true" \
         -e SECRETS_CONFIG="/var/lib/local-secrets/$slugname/$service_handler/$secrets_config" \
         --network chillboxnet \
         --mount "type=bind,src=$project_dir/$service_handler/src/${slugname}_${service_handler},dst=/usr/local/src/app/src/${slugname}_${service_handler},readonly" \

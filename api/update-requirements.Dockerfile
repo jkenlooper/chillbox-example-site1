@@ -86,23 +86,34 @@ mkdir -p /home/dev/requirements
 chown -R dev:dev /home/dev/requirements
 SETUP
 
+ARG LOCAL_PYTHON_PACKAGES=/var/lib/chillbox/python
+ENV LOCAL_PYTHON_PACKAGES=$LOCAL_PYTHON_PACKAGES
+
 COPY --chown=dev:dev setup.py /home/dev/app/setup.py
 COPY --chown=dev:dev README.md /home/dev/app/README.md
-COPY --chown=dev:dev src /home/dev/app/src
-#COPY --chown=dev:dev requirements.in /home/dev/app/requirements.in
+# Only the __init__.py is needed when using pip download.
+COPY --chown=dev:dev src/site1_api/__init__.py /home/dev/app/src/site1_api/__init__.py
+
+RUN <<PIP_INSTALL_REQ
+set -o errexit
+mkdir -p "$LOCAL_PYTHON_PACKAGES"
+pip download \
+    --destination-directory "$LOCAL_PYTHON_PACKAGES" \
+    pip wheel
+pip download --disable-pip-version-check \
+    --destination-directory "$LOCAL_PYTHON_PACKAGES" \
+    /home/dev/app
+PIP_INSTALL_REQ
+
 USER dev
 
 RUN <<UPDATE_REQUIREMENTS
-which python
-# TODO make a 'make requirements' target that runs the below in a container. This
-# will generate the hashed requirments.txt file that the main container will
-# use.
+# Generate the hashed requirments.txt file that the main container will use.
 python -m pip install --upgrade pip-tools
-ls -l /home/dev/app/.venv/bin/
 pip-compile --generate-hashes \
-    --upgrade \
     --resolver=backtracking \
     --allow-unsafe \
+    --no-index --find-links="$LOCAL_PYTHON_PACKAGES" \
     --output-file /home/dev/requirements/requirements.txt \
     /home/dev/app/setup.py
 UPDATE_REQUIREMENTS

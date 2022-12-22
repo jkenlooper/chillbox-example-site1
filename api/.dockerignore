@@ -2,11 +2,10 @@
 
 *
 !/MANIFEST.in
-!/pyproject.toml
-!/requirements.txt
-!/setup.cfg
+!/requirements/requirements.txt
 !/setup.py
 !/src/*
 !/README.md
 !/secrets.sh
 !/tests/*
+!/dist/python/*

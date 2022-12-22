@@ -87,22 +87,10 @@ FLASK_SETUP
 ARG LOCAL_PYTHON_PACKAGES=/var/lib/chillbox/python
 ENV LOCAL_PYTHON_PACKAGES=$LOCAL_PYTHON_PACKAGES
 
+# The dist/python directory should include the wheels and other source packages
+# created from running the update-requirements.sh script.
+COPY dist/python $LOCAL_PYTHON_PACKAGES
 
-COPY requirements.txt /usr/local/src/app/requirements.txt
-RUN <<PIP_INSTALL_REQ
-set -o errexit
-mkdir -p "$LOCAL_PYTHON_PACKAGES"
-/usr/bin/pip3 download \
-    --destination-directory "$LOCAL_PYTHON_PACKAGES" \
-    pip wheel
-#/usr/bin/pip3 install --disable-pip-version-check --compile -r /usr/local/src/app/requirements.txt
-/usr/bin/pip3 download --disable-pip-version-check \
-    --destination-directory "$LOCAL_PYTHON_PACKAGES" \
-    -r /usr/local/src/app/requirements.txt || echo 'ignore'
-PIP_INSTALL_REQ
-
-COPY pyproject.toml /usr/local/src/app/pyproject.toml
-COPY setup.cfg /usr/local/src/app/setup.cfg
 COPY setup.py /usr/local/src/app/setup.py
 COPY README.md /usr/local/src/app/README.md
 COPY src /usr/local/src/app/src
@@ -110,15 +98,16 @@ RUN <<PIP_INSTALL_APP
 set -o errexit
 
 # Only pip install with the local python packages cache.
-/usr/bin/python3 -m venv /usr/local/src/app/.venv
-/usr/local/src/app/.venv/bin/pip3 install --disable-pip-version-check --compile \
+# This uses the setup.py instead of the requirments.txt since this is for
+# development.
+pip install --disable-pip-version-check --compile \
     --no-index --find-links="$LOCAL_PYTHON_PACKAGES" \
-    -e /usr/local/src/app || echo 'ignore'
+    -e /usr/local/src/app
 
 PIP_INSTALL_APP
 
 ENV FLASK_APP=site1_api.app
-ENV FLASK_ENV=production
+ENV FLASK_DEBUG=false
 
 # TODO set secrets for local
 ENV SECRETS_CONFIG="/var/lib/chillbox-shared-secrets/site1/api.cfg"
@@ -153,26 +142,18 @@ if [ "${current_user}" != "root" ]; then
   exit 1
 fi
 
-# # pip install in editable mode
-# /usr/bin/python3 -m venv /usr/local/src/app-venv
-# /usr/local/src/app-venv/bin/pip install --disable-pip-version-check \
-#     --no-index --find-links="$LOCAL_PYTHON_PACKAGES" \
-#     -e .
-
-export FLASK_ENV=development
-
-/usr/local/src/app/.venv/bin/flask init-db
+flask init-db
 
 # Setting host to 0.0.0.0 (externally visible) to work with docker network.
-/usr/local/src/app/.venv/bin/flask run \
+flask run \
   --port "$API_PORT" \
   --host "0.0.0.0"
 
-# /usr/local/src/app-venv/bin/pytest
+# pytest
 
-# /usr/local/src/app-venv/bin/coverage run -m pytest
+# coverage run -m pytest
 
-# /usr/local/src/app-venv/bin/coverage report
+# coverage report
 
 FLASK_RUN_SH
 

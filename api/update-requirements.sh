@@ -15,20 +15,26 @@ Update the python requirement txt files.
 
 Usage:
   $script_name -h
+  $script_name -i
   $script_name
 
 Options:
   -h                  Show this help message.
+  -i                  Switch to interactive mode.
 
 HERE
 }
 
 slugname=""
+interactive="n"
 
-while getopts "h" OPTION ; do
+while getopts "hi" OPTION ; do
   case "$OPTION" in
     h) usage
        exit 0 ;;
+    i)
+       interactive="y"
+       ;;
     ?) usage
        exit 1 ;;
   esac
@@ -43,10 +49,20 @@ DOCKER_BUILDKIT=1 docker build \
   "$script_dir"
 
 container_name="update-requirements-$name_hash"
+if [ "$interactive" = "y" ]; then
+docker run -i --tty \
+  --user root \
+  --name "$container_name" \
+  "$image_name" sh
+
+else
 docker run -d \
   --name "$container_name" \
   "$image_name"
+fi
 
 docker cp "$container_name:/home/dev/requirements/." "requirements/"
+mkdir -p dist/python
+docker cp "$container_name:/var/lib/chillbox/python/." "dist/python/"
 docker stop --time 0 "$container_name" > /dev/null 2>&1 || printf ""
 docker rm "$container_name" > /dev/null 2>&1 || printf ""
