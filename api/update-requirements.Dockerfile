@@ -109,6 +109,7 @@ USER dev
 
 RUN <<UPDATE_REQUIREMENTS
 # Generate the hashed requirments.txt file that the main container will use.
+set -o errexit
 python -m pip install --upgrade pip-tools
 pip-compile --generate-hashes \
     --resolver=backtracking \
@@ -117,5 +118,23 @@ pip-compile --generate-hashes \
     --output-file /home/dev/requirements/requirements.txt \
     /home/dev/app/setup.py
 UPDATE_REQUIREMENTS
+
+RUN <<AUDIT
+# Audit packages for known vulnerabilities
+set -o errexit
+python -m pip install pip-audit==2.4.10
+pip-audit \
+    --require-hashes \
+    --local \
+    --strict \
+    --vulnerability-service pypi \
+    -r /home/dev/requirements/requirements.txt
+pip-audit \
+    --require-hashes \
+    --local \
+    --strict \
+    --vulnerability-service osv \
+    -r /home/dev/requirements/requirements.txt
+AUDIT
 
 CMD ["/home/dev/sleep.sh"]

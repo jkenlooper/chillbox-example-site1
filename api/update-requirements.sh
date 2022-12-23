@@ -4,6 +4,7 @@ set -o errexit
 
 
 script_dir="$(dirname "$(realpath "$0")")"
+service_dir="$(dirname "$script_dir")"
 script_name="$(basename "$0")"
 
 name_hash="$(printf "%s" "$script_dir" | md5sum | cut -d' ' -f1)"
@@ -50,19 +51,19 @@ DOCKER_BUILDKIT=1 docker build \
 
 container_name="update-requirements-$name_hash"
 if [ "$interactive" = "y" ]; then
-docker run -i --tty \
-  --user root \
-  --name "$container_name" \
-  "$image_name" sh
+  docker run -i --tty \
+    --user root \
+    --name "$container_name" \
+    "$image_name" sh
 
 else
-docker run -d \
-  --name "$container_name" \
-  "$image_name"
+  docker run -d \
+    --name "$container_name" \
+    "$image_name"
 fi
 
-docker cp "$container_name:/home/dev/requirements/." "requirements/"
+docker cp "$container_name:/home/dev/requirements/." "$service_dir/requirements/"
 mkdir -p dist/python
-docker cp "$container_name:/var/lib/chillbox/python/." "dist/python/"
+docker cp "$container_name:/var/lib/chillbox/python/." "$service_dir/dist/python/"
 docker stop --time 0 "$container_name" > /dev/null 2>&1 || printf ""
 docker rm "$container_name" > /dev/null 2>&1 || printf ""

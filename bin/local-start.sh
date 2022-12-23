@@ -257,7 +257,7 @@ for service_json_obj in "$@"; do
       if [ "$container_status" = "exited" ]; then
         docker logs "$container_name"
         echo "ERROR $script_name: Failed to start $service_lang service: $container_name"
-        echo "Start this container in debug mode? [y/n] "
+        echo "Start this container in interactive mode? [y/n] "
         read -r confirm
         if [ "$confirm" = "y" ]; then
           printf '\n\n%s\n\n' "INFO $script_name: Debugging $service_lang service: $container_name"
@@ -269,6 +269,7 @@ for service_json_obj in "$@"; do
             --env-file "$site_env_vars_file" \
             -e HOST="localhost" \
             -e PORT="$PORT" \
+            -e FLASK_DEBUG="true" \
             -e SECRETS_CONFIG="/var/lib/local-secrets/$slugname/$service_handler/$secrets_config" \
             --network chillboxnet \
             --mount "type=bind,src=$project_dir/$service_handler/src/${slugname}_${service_handler},dst=/usr/local/src/app/src/${slugname}_${service_handler},readonly" \
