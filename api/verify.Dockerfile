@@ -93,23 +93,39 @@ COPY --chown=dev:dev README.md /home/dev/app/README.md
 # Only the __init__.py is needed when using pip download.
 COPY --chown=dev:dev src/site1_api/__init__.py /home/dev/app/src/site1_api/__init__.py
 
+# UPKEEP due: "2023-03-23" label: "Python pip" interval: "+3 months"
+# https://pypi.org/project/pip/
+ARG PIP_VERSION=22.3.1
+# UPKEEP due: "2023-03-23" label: "Python wheel" interval: "+3 months"
+# https://pypi.org/project/wheel/
+ARG WHEEL_VERSION=0.38.4
 RUN <<PIP_INSTALL_REQ
+# Download python packages described in setup.py
 set -o errexit
 mkdir -p "$LOCAL_PYTHON_PACKAGES"
-pip download \
+python -m pip download \
     --destination-directory "$LOCAL_PYTHON_PACKAGES" \
-    pip wheel
-pip download --disable-pip-version-check \
+    "pip==$PIP_VERSION" \
+    "wheel==$WHEEL_VERSION"
+python -m pip download --disable-pip-version-check \
     --destination-directory "$LOCAL_PYTHON_PACKAGES" \
     /home/dev/app
 PIP_INSTALL_REQ
 
 USER dev
 
+# UPKEEP due: "2023-03-23" label: "pip-tools" interval: "+3 months"
+# https://pypi.org/project/pip-tools/
+ARG PIP_TOOLS_VERSION=6.12.1
+RUN <<PIP_TOOLS_INSTALL
+# Install pip-tools
+set -o errexit
+python -m pip install pip-tools=="$PIP_TOOLS_VERSION"
+PIP_TOOLS_INSTALL
+
 RUN <<UPDATE_REQUIREMENTS
 # Generate the hashed requirements.txt file that the main container will use.
 set -o errexit
-python -m pip install --upgrade pip-tools
 pip-compile --generate-hashes \
     --resolver=backtracking \
     --allow-unsafe \
@@ -118,10 +134,14 @@ pip-compile --generate-hashes \
     /home/dev/app/setup.py
 UPDATE_REQUIREMENTS
 
+
+# UPKEEP due: "2023-03-23" label: "Python auditing tool pip-audit" interval: "+3 months"
+# https://pypi.org/project/pip-audit/
+ARG PIP_AUDIT_VERSION=2.4.10
 RUN <<AUDIT
 # Audit packages for known vulnerabilities
 set -o errexit
-python -m pip install pip-audit==2.4.10
+python -m pip install "pip-audit==$PIP_AUDIT_VERSION"
 pip-audit \
     --require-hashes \
     --local \
@@ -136,11 +156,13 @@ pip-audit \
     -r /home/dev/app/requirements.txt
 AUDIT
 
-# TODO check app code with bandit
+# UPKEEP due: "2023-06-23" label: "Python security linter tool: bandit" interval: "+6 months"
+# https://pypi.org/project/bandit/
+ARG BANDIT_VERSION=1.7.4
 RUN <<BANDIT_INSTALL
 # Install bandit to find common security issues
 set -o errexit
-python -m pip install bandit==1.7.4
+python -m pip install "bandit==$BANDIT_VERSION"
 BANDIT_INSTALL
 
 COPY --chown=dev:dev src/site1_api/ /home/dev/app/src/site1_api/
