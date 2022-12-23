@@ -7,4 +7,5 @@
 !/README.md
 !/secrets.sh
 !/tests/*
+!/lib/*
 !/dist/python/*

@@ -14,47 +14,12 @@ DEV_USER
 
 WORKDIR /usr/local/src/app/
 
+COPY lib/install-chillbox-packages.sh /home/dev/install-chillbox-packages.sh
 RUN <<SERVICE_DEPENDENCIES
 set -o errexit
-apk update
-# Support python services and python Pillow
-# Should match the list from chillbox install-service-dependencies.sh
-apk add --no-cache \
-  -q --no-progress \
-  build-base \
-  freetype \
-  freetype-dev \
-  fribidi \
-  fribidi-dev \
-  gcc \
-  harfbuzz \
-  harfbuzz-dev \
-  jpeg \
-  jpeg-dev \
-  lcms2 \
-  lcms2-dev \
-  libffi-dev \
-  libjpeg \
-  musl-dev \
-  openjpeg \
-  openjpeg-dev \
-  py3-pip \
-  python3 \
-  python3-dev \
-  sqlite \
-  tcl \
-  tcl-dev \
-  tiff \
-  tiff-dev \
-  tk \
-  tk-dev \
-  zlib \
-  zlib-dev
 
-# Support for python flask with gunicorn and gevent
-apk add --no-cache \
-  -q --no-progress \
-  py3-gunicorn
+apk update
+"/home/dev/install-chillbox-packages.sh"
 
 ln -s /usr/bin/python3 /usr/bin/python
 SERVICE_DEPENDENCIES
