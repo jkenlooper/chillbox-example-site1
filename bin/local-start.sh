@@ -237,11 +237,8 @@ for service_json_obj in "$@"; do
       DOCKER_BUILDKIT=1 docker build \
         -t "$image_name" \
         "$project_dir/$service_handler"
-      # Switch to root user when troubleshooting or using bind mounts
-      echo "Running the $container_name container with root user."
       docker run -d --tty \
         --name "$container_name" \
-        --user root \
         --env-file "$site_env_vars_file" \
         -e HOST="localhost" \
         -e PORT="$PORT" \
@@ -250,7 +247,7 @@ for service_json_obj in "$@"; do
         --network chillboxnet \
         --mount "type=bind,src=$project_dir/$service_handler/src/${slugname}_${service_handler},dst=/usr/local/src/app/src/${slugname}_${service_handler},readonly" \
         --mount "type=bind,src=$not_encrypted_secrets_dir/$service_handler/$secrets_config,dst=/var/lib/local-secrets/$slugname/$service_handler/$secrets_config,readonly" \
-        "$image_name" ./flask-run.sh
+        "$image_name"
       set +x
       sleep 2
       container_status="$(docker container inspect $container_name | jq -r '.[0].State.Status')"
@@ -276,6 +273,8 @@ for service_json_obj in "$@"; do
             --mount "type=bind,src=$not_encrypted_secrets_dir/$service_handler/$secrets_config,dst=/var/lib/local-secrets/$slugname/$service_handler/$secrets_config,readonly" \
             "$image_name" ./sleep.sh
           set +x
+          echo "Running the $container_name container with root user and sleep process to keep it started."
+          echo "Use the 'docker exec' command to troubleshoot."
         fi
       fi
       ;;

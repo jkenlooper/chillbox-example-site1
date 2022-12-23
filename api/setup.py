@@ -26,9 +26,4 @@ setup(
         # 'dev': ['check-manifest'],
         "test": ["pytest", "coverage"],
     },
-    entry_points={
-        "console_scripts": [
-            "start=site1_api.script:main",
-        ]
-    },
 )
