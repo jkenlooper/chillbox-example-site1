@@ -137,5 +137,19 @@ pip-audit \
 AUDIT
 
 # TODO check app code with bandit
+RUN <<BANDIT_INSTALL
+# Install bandit to find common security issues
+set -o errexit
+python -m pip install bandit==1.7.4
+BANDIT_INSTALL
+
+COPY --chown=dev:dev src/site1_api/ /home/dev/app/src/site1_api/
+RUN <<BANDIT
+# Use bandit to find common security issues
+set -o errexit
+bandit \
+    --recursive \
+    /home/dev/app/src/
+BANDIT
 
 CMD ["/home/dev/sleep.sh"]
