@@ -4,7 +4,6 @@ set -o errexit
 
 
 script_dir="$(dirname "$(realpath "$0")")"
-service_dir="$(dirname "$script_dir")"
 script_name="$(basename "$0")"
 
 name_hash="$(printf "%s" "$script_dir" | md5sum | cut -d' ' -f1)"
@@ -12,7 +11,8 @@ test "${#name_hash}" -eq "32" || (echo "ERROR $script_name: Failed to create a n
 
 usage() {
   cat <<HERE
-Update the python requirement txt files.
+Update the python requirement txt files, check for known vulnerabilities,
+download local python packages to dist/python/.
 
 Usage:
   $script_name -h
@@ -42,14 +42,16 @@ while getopts "hi" OPTION ; do
 done
 shift $((OPTIND - 1))
 
-image_name="update-requirements-$name_hash"
+LOCAL_PYTHON_PACKAGES=/var/lib/chillbox/python
+image_name="verify-$name_hash"
 docker image rm "$image_name" > /dev/null 2>&1 || printf ""
 DOCKER_BUILDKIT=1 docker build \
   -t "$image_name" \
-  -f "$script_dir/update-requirements.Dockerfile" \
+  -f "$script_dir/verify.Dockerfile" \
+  --build-arg LOCAL_PYTHON_PACKAGES="$LOCAL_PYTHON_PACKAGES" \
   "$script_dir"
 
-container_name="update-requirements-$name_hash"
+container_name="verify-$name_hash"
 if [ "$interactive" = "y" ]; then
   docker run -i --tty \
     --user root \
@@ -62,8 +64,8 @@ else
     "$image_name"
 fi
 
-docker cp "$container_name:/home/dev/requirements/." "$service_dir/requirements/"
+docker cp "$container_name:/home/dev/app/requirements.txt" "$script_dir/requirements.txt"
 mkdir -p dist/python
-docker cp "$container_name:/var/lib/chillbox/python/." "$service_dir/dist/python/"
+docker cp "$container_name:$LOCAL_PYTHON_PACKAGES/." "$script_dir/dist/python/"
 docker stop --time 0 "$container_name" > /dev/null 2>&1 || printf ""
 docker rm "$container_name" > /dev/null 2>&1 || printf ""

@@ -82,8 +82,7 @@ done
 HERE
 chmod +x /home/dev/sleep.sh
 
-mkdir -p /home/dev/requirements
-chown -R dev:dev /home/dev/requirements
+chown -R dev:dev /home/dev/app
 SETUP
 
 ARG LOCAL_PYTHON_PACKAGES=/var/lib/chillbox/python
@@ -108,14 +107,14 @@ PIP_INSTALL_REQ
 USER dev
 
 RUN <<UPDATE_REQUIREMENTS
-# Generate the hashed requirments.txt file that the main container will use.
+# Generate the hashed requirements.txt file that the main container will use.
 set -o errexit
 python -m pip install --upgrade pip-tools
 pip-compile --generate-hashes \
     --resolver=backtracking \
     --allow-unsafe \
     --no-index --find-links="$LOCAL_PYTHON_PACKAGES" \
-    --output-file /home/dev/requirements/requirements.txt \
+    --output-file /home/dev/app/requirements.txt \
     /home/dev/app/setup.py
 UPDATE_REQUIREMENTS
 
@@ -128,13 +127,15 @@ pip-audit \
     --local \
     --strict \
     --vulnerability-service pypi \
-    -r /home/dev/requirements/requirements.txt
+    -r /home/dev/app/requirements.txt
 pip-audit \
     --require-hashes \
     --local \
     --strict \
     --vulnerability-service osv \
-    -r /home/dev/requirements/requirements.txt
+    -r /home/dev/app/requirements.txt
 AUDIT
+
+# TODO check app code with bandit
 
 CMD ["/home/dev/sleep.sh"]

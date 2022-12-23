@@ -1,5 +1,5 @@
 README.md
-requirements/requirements.txt
+requirements.txt
 dist/python
 setup.py
 src

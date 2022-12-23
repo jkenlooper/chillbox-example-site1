@@ -88,29 +88,28 @@ ARG LOCAL_PYTHON_PACKAGES=/var/lib/chillbox/python
 ENV LOCAL_PYTHON_PACKAGES=$LOCAL_PYTHON_PACKAGES
 
 # The dist/python directory should include the wheels and other source packages
-# created from running the update-requirements.sh script.
+# created from running the verify.sh script.
 COPY dist/python $LOCAL_PYTHON_PACKAGES
 
 COPY setup.py /usr/local/src/app/setup.py
 COPY README.md /usr/local/src/app/README.md
 COPY src /usr/local/src/app/src
 RUN <<PIP_INSTALL_APP
+# Install app in editable mode and use the local python packages.
 set -o errexit
 
 # Only pip install with the local python packages cache.
-# This uses the setup.py instead of the requirments.txt since this is for
+# This uses the setup.py instead of the requirements.txt since this is for
 # development.
 pip install --disable-pip-version-check --compile \
     --no-index --find-links="$LOCAL_PYTHON_PACKAGES" \
     -e /usr/local/src/app
-
 PIP_INSTALL_APP
 
 ENV FLASK_APP=site1_api.app
 ENV FLASK_DEBUG=false
 
-# TODO set secrets for local
-ENV SECRETS_CONFIG="/var/lib/chillbox-shared-secrets/site1/api.cfg"
+ENV SECRETS_CONFIG=""
 
 ENV API_PORT=8100
 
@@ -118,10 +117,12 @@ ENV SERVER_NAME="localhost"
 
 
 RUN <<FILEWATCH_SUPPORT
+# Create scripts for file watching.
+set -o errexit
 cat <<'SLEEP_SH' > sleep.sh
 #!/usr/bin/env sh
-
 set -o errexit
+
 echo "Sleeping."
 while true; do
   printf "."
