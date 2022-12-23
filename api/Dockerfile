@@ -112,7 +112,7 @@ gunicorn \
     --max-requests 50 \
     --max-requests-jitter 10 \
     --log-level debug \
-    --bind "0.0.0.0:$API_PORT" \
+    --bind "0.0.0.0:$PORT" \
     "site1_api.app:create_app()"
 
 FLASK_RUN_SH
