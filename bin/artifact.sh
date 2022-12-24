@@ -54,6 +54,7 @@ create_archive() {
     directory_full_path="$(realpath "$service_handler")"
     test -d "$directory_full_path" || (echo "ERROR $script_name: The provided service handler ($service_handler) is not a directory at $directory_full_path" >&2 && exit 1)
 
+    # TODO Should the artifact include the api/dist/python files?
     mkdir -p "$tmpdir/$slugname/$service_name"
     manifest_files="$(cat "$directory_full_path/$service_manifest")"
     for item in $manifest_files; do

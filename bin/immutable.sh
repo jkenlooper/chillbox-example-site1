@@ -59,6 +59,10 @@ create_archive() {
     find "$directory_full_path/dist/" -depth -mindepth 1 -maxdepth 1 -exec cp -R {} "$tmpdir/$slugname/$service_name/$hash_string/" \;
   done
 
+  # TODO replace with the $service_handler/dist/python/*
+  mkdir -p "$tmpdir/_deps/"
+  echo "test" > "$tmpdir/_deps/test.txt"
+
   archive_dir="$(dirname "$archive")"
   mkdir -p "$archive_dir"
   tar c \
