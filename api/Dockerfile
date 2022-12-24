@@ -37,6 +37,20 @@ PYTHON_VIRTUALENV
 ENV VIRTUAL_ENV=/usr/local/src/app/.venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
+# UPKEEP due: "2023-03-23" label: "Python pip" interval: "+3 months"
+# https://pypi.org/project/pip/
+ARG PIP_VERSION=22.3.1
+# UPKEEP due: "2023-03-23" label: "Python wheel" interval: "+3 months"
+# https://pypi.org/project/wheel/
+ARG WHEEL_VERSION=0.38.4
+RUN <<PIP_INSTALL
+# Install pip and wheel
+set -o errexit
+python -m pip install \
+    "pip==$PIP_VERSION" \
+    "wheel==$WHEEL_VERSION"
+PIP_INSTALL
+
 ARG FLASK_INSTANCE_PATH=/var/lib/site1/
 ENV FLASK_INSTANCE_PATH=$FLASK_INSTANCE_PATH
 RUN <<FLASK_SETUP
@@ -49,12 +63,9 @@ mkdir -p /usr/local/src/app
 chown -R dev:dev /usr/local/src/app
 FLASK_SETUP
 
-ARG LOCAL_PYTHON_PACKAGES=/var/lib/chillbox/python
-ENV LOCAL_PYTHON_PACKAGES=$LOCAL_PYTHON_PACKAGES
-
-# The dist/python directory should include the wheels and other source packages
+# The dep directory should include the wheels and other source packages
 # created from running the verify.sh script.
-COPY dist/python $LOCAL_PYTHON_PACKAGES
+COPY dep /usr/local/src/app/dep
 
 COPY setup.py /usr/local/src/app/setup.py
 COPY README.md /usr/local/src/app/README.md
@@ -67,7 +78,7 @@ set -o errexit
 # This uses the setup.py instead of the requirements.txt since this is for
 # development.
 pip install --disable-pip-version-check --compile \
-    --no-index --find-links="$LOCAL_PYTHON_PACKAGES" \
+    --no-index --find-links="./dep" \
     -e /usr/local/src/app
 PIP_INSTALL_APP
 

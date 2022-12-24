@@ -65,7 +65,6 @@ if [ -n "$git_dir_status" ]; then
 fi
 
 create_release() {
-  # TODO Should the release include the api/dist/python files?
   git archive \
     --format=tar.gz \
     --prefix="$slugname/" \
