@@ -67,6 +67,7 @@ FLASK_SETUP
 # created from running the verify.sh script.
 COPY dep /usr/local/src/app/dep
 
+COPY requirements.txt /usr/local/src/app/requirements.txt
 COPY setup.py /usr/local/src/app/setup.py
 COPY README.md /usr/local/src/app/README.md
 COPY src /usr/local/src/app/src
@@ -78,7 +79,10 @@ set -o errexit
 # This uses the setup.py instead of the requirements.txt since this is for
 # development.
 pip install --disable-pip-version-check --compile \
-    --no-index --find-links="./dep" \
+    --no-index \
+    -r /usr/local/src/app/requirements.txt
+pip install --disable-pip-version-check --compile \
+    --no-index \
     -e /usr/local/src/app
 PIP_INSTALL_APP
 
