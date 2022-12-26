@@ -80,6 +80,10 @@ set -o errexit
 # development.
 pip install --disable-pip-version-check --compile \
     --no-index \
+    --find-links /var/lib/chillbox/python \
+    gunicorn[gevent,setproctitle]
+pip install --disable-pip-version-check --compile \
+    --no-index \
     -r /usr/local/src/app/requirements.txt
 pip install --disable-pip-version-check --compile \
     --no-index \
@@ -120,6 +124,7 @@ flask init-db
 
 # Setting host to 0.0.0.0 (externally visible) to work with docker network.
 gunicorn \
+    --chdir /usr/local/src/app \
     --reload \
     --name site1_api_app \
     --workers 2 \
