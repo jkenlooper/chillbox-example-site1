@@ -10,3 +10,4 @@
 !/lib/*
 !/dep/*
 !/dist/python/*
+!/gunicorn.conf.py

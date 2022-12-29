@@ -70,6 +70,7 @@ COPY dep /usr/local/src/app/dep
 COPY requirements.txt /usr/local/src/app/requirements.txt
 COPY setup.py /usr/local/src/app/setup.py
 COPY README.md /usr/local/src/app/README.md
+COPY gunicorn.conf.py /usr/local/src/app/gunicorn.conf.py
 COPY src /usr/local/src/app/src
 RUN <<PIP_INSTALL_APP
 # Install app in editable mode and use the local python packages.
@@ -120,10 +121,11 @@ cat <<'FLASK_RUN_SH' > /usr/local/src/app/flask-run.sh
 
 set -o errexit
 
-flask init-db
-
 # Setting host to 0.0.0.0 (externally visible) to work with docker network.
+# The gunicorn command will use gunicorn.conf.py if it is in the same directory
+# by default. Setting it explicitly here to help show how it is being used.
 gunicorn \
+    --config ./gunicorn.conf.py \
     --chdir /usr/local/src/app \
     --reload \
     --name site1_api_app \
@@ -132,6 +134,7 @@ gunicorn \
     --max-requests 50 \
     --max-requests-jitter 10 \
     --log-level debug \
+    --access-logfile - \
     --bind "0.0.0.0:$PORT" \
     "site1_api.app:create_app()"
 

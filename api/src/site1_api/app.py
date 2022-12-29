@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask
+from flask import Flask, current_app
 import click
 from flask.cli import with_appcontext
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -79,7 +79,14 @@ def create_app(test_config=None):
     return app
 
 
+@with_appcontext
+def example_init():
+    "Example of doing something when the service starts."
+    current_app.logger.info("Start of example_init()")
+
+
 @click.command("init-db")
 @with_appcontext
 def init_db_command():
-    click.echo("fake init-db command")
+    click.echo("example init-db command output via click.echo()")
+    example_init()

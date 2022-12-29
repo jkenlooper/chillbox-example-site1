@@ -5,3 +5,4 @@ dep
 src
 secrets.sh
 secrets.Dockerfile
+gunicorn.conf.py
