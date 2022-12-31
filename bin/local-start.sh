@@ -200,6 +200,10 @@ for service_json_obj in "$@"; do
   echo "$service_handler $service_name $service_lang"
   eval "$(echo "$service_json_obj" | jq -r '.environment // [] | .[] | "export " + .name + "=" + (.value | @sh)' \
     | "$script_dir/envsubst-site-env.sh" -c "$modified_site_json_file")"
+  tmp_service_env_vars_file="$(mktemp)"
+  echo "$service_json_obj" | jq -r '.environment // [] | .[] | .name + "=" + .value' \
+    | "$script_dir/envsubst-site-env.sh" -c "$modified_site_json_file" > "$tmp_service_env_vars_file"
+
   image_name="$(printf '%s' "$slugname-$service_handler-$project_name_hash" | grep -o -E '^.{0,63}')"
   container_name="$(printf '%s' "$slugname-$service_name-$project_name_hash" | grep -o -E '^.{0,63}')"
 
@@ -217,6 +221,8 @@ for service_json_obj in "$@"; do
       docker run -d --tty \
         --network chillboxnet \
         --env-file "$site_env_vars_file" \
+        --env-file "$tmp_service_env_vars_file" \
+        -e HOST="localhost" \
         --mount "type=bind,src=$project_dir/$service_handler/src,dst=/build/src,readonly" \
         --name "$container_name" \
         "$image_name"
@@ -240,9 +246,8 @@ for service_json_obj in "$@"; do
       docker run -d --tty \
         --name "$container_name" \
         --env-file "$site_env_vars_file" \
+        --env-file "$tmp_service_env_vars_file" \
         -e HOST="localhost" \
-        -e PORT="$PORT" \
-        -e FLASK_DEBUG="true" \
         -e SECRETS_CONFIG="/var/lib/local-secrets/$slugname/$service_handler/$secrets_config" \
         --network chillboxnet \
         --mount "type=bind,src=$project_dir/$service_handler/src/${slugname}_${service_handler},dst=/usr/local/src/app/src/${slugname}_${service_handler},readonly" \
@@ -264,9 +269,8 @@ for service_json_obj in "$@"; do
             --name "$container_name" \
             --user root \
             --env-file "$site_env_vars_file" \
+            --env-file "$tmp_service_env_vars_file" \
             -e HOST="localhost" \
-            -e PORT="$PORT" \
-            -e FLASK_DEBUG="true" \
             -e SECRETS_CONFIG="/var/lib/local-secrets/$slugname/$service_handler/$secrets_config" \
             --network chillboxnet \
             --mount "type=bind,src=$project_dir/$service_handler/src/${slugname}_${service_handler},dst=/usr/local/src/app/src/${slugname}_${service_handler},readonly" \
@@ -290,8 +294,8 @@ for service_json_obj in "$@"; do
         --name "$container_name" \
         --network chillboxnet \
         --env-file "$site_env_vars_file" \
-        -e CHILL_HOST=0.0.0.0 \
-        -e CHILL_PORT \
+        --env-file "$tmp_service_env_vars_file" \
+        -e HOST="localhost" \
         --mount "type=volume,src=$container_name,dst=/var/lib/chill/sqlite3" \
         --mount "type=bind,src=$project_dir/$service_handler/documents,dst=/home/chill/app/documents" \
         --mount "type=bind,src=$project_dir/$service_handler/queries,dst=/home/chill/app/queries" \
@@ -302,6 +306,7 @@ for service_json_obj in "$@"; do
 
   esac
 
+  rm -f "$tmp_service_env_vars_file"
 done
 
 # Hostnames can't be over 63 characters
