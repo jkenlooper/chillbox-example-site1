@@ -223,7 +223,7 @@ for service_json_obj in "$@"; do
       set +x
       ;;
 
-    flask)
+    python)
       if [ -n "$secrets_config" ] && [ ! -s "$not_encrypted_secrets_dir/$service_handler/$secrets_config" ]; then
         "$script_dir/local-secrets.sh" -s "$slugname" "$modified_site_json_file"
       else

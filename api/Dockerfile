@@ -14,12 +14,28 @@ DEV_USER
 
 WORKDIR /usr/local/src/app/
 
-COPY lib/install-chillbox-packages.sh /home/dev/install-chillbox-packages.sh
+# UPKEEP due: "2023-03-23" label: "Chillbox cli shared scripts" interval: "+3 months"
+# https://github.com/jkenlooper/chillbox
+ARG CHILLBOX_CLI_VERSION="0.0.1-beta.30"
+RUN <<CHILLBOX_PACKAGES
+# Download and extract shared scripts from chillbox.
+set -o errexit
+# The /etc/chillbox/bin/ directory is a hint that the
+# install-chillbox-packages.sh script is the same one that chillbox uses.
+mkdir -p /etc/chillbox/bin
+tmp_tar_gz="$(mktemp)"
+wget -q -O "$tmp_tar_gz" \
+  "https://github.com/jkenlooper/chillbox/releases/download/$CHILLBOX_CLI_VERSION/chillbox-cli.tar.gz"
+tar x -f "$tmp_tar_gz" -z -C /etc/chillbox/bin --strip-components 4 ./src/chillbox/bin/install-chillbox-packages.sh
+chown root:root /etc/chillbox/bin/install-chillbox-packages.sh
+rm -f "$tmp_tar_gz"
+CHILLBOX_PACKAGES
+
 RUN <<SERVICE_DEPENDENCIES
 set -o errexit
 
 apk update
-"/home/dev/install-chillbox-packages.sh"
+/etc/chillbox/bin/install-chillbox-packages.sh
 
 ln -s /usr/bin/python3 /usr/bin/python
 SERVICE_DEPENDENCIES
@@ -116,7 +132,7 @@ done
 SLEEP_SH
 chmod +x sleep.sh
 
-cat <<'FLASK_RUN_SH' > /usr/local/src/app/flask-run.sh
+cat <<'RELOADER_SH' > /usr/local/src/app/reloader.sh
 #!/usr/bin/env sh
 
 set -o errexit
@@ -138,11 +154,11 @@ gunicorn \
     --bind "0.0.0.0:$PORT" \
     "site1_api.app:create_app()"
 
-FLASK_RUN_SH
+RELOADER_SH
 
-chmod +x flask-run.sh
+chmod +x reloader.sh
 FILEWATCH_SUPPORT
 
 USER dev
 
-CMD ["/usr/local/src/app/flask-run.sh"]
+CMD ["/usr/local/src/app/reloader.sh"]
