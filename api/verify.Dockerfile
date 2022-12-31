@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1.4.3
 
+# This file in the parent directory api was generated from the flask-service directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
+
 # UPKEEP due: "2023-01-10" label: "Alpine Linux base image" interval: "+3 months"
 # docker pull alpine:3.16.2
 # docker image ls --digests alpine
@@ -12,12 +14,28 @@ DEV_USER
 
 WORKDIR /home/dev/app
 
-COPY lib/install-chillbox-packages.sh /home/dev/install-chillbox-packages.sh
+# UPKEEP due: "2023-03-23" label: "Chillbox cli shared scripts" interval: "+3 months"
+# https://github.com/jkenlooper/chillbox
+ARG CHILLBOX_CLI_VERSION="0.0.1-beta.30"
+RUN <<CHILLBOX_PACKAGES
+# Download and extract shared scripts from chillbox.
+set -o errexit
+# The /etc/chillbox/bin/ directory is a hint that the
+# install-chillbox-packages.sh script is the same one that chillbox uses.
+mkdir -p /etc/chillbox/bin
+tmp_tar_gz="$(mktemp)"
+wget -q -O "$tmp_tar_gz" \
+  "https://github.com/jkenlooper/chillbox/releases/download/$CHILLBOX_CLI_VERSION/chillbox-cli.tar.gz"
+tar x -f "$tmp_tar_gz" -z -C /etc/chillbox/bin --strip-components 4 ./src/chillbox/bin/install-chillbox-packages.sh
+chown root:root /etc/chillbox/bin/install-chillbox-packages.sh
+rm -f "$tmp_tar_gz"
+CHILLBOX_PACKAGES
+
 RUN <<SERVICE_DEPENDENCIES
 set -o errexit
 
 apk update
-"/home/dev/install-chillbox-packages.sh"
+/etc/chillbox/bin/install-chillbox-packages.sh
 
 ln -s /usr/bin/python3 /usr/bin/python
 SERVICE_DEPENDENCIES

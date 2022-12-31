@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
+# This file in the parent directory api was generated from the flask-service directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
+
 set -o errexit
 
 
