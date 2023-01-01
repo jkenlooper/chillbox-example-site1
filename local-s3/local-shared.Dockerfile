@@ -19,9 +19,9 @@ done
 HERE
 chmod +x /home/dev/sleep.sh
 
-mkdir -p /var/lib/chillbox-shared-secrets
-chown -R dev:dev /var/lib/chillbox-shared-secrets
-chmod -R 700 /var/lib/chillbox-shared-secrets
+mkdir -p /var/lib/chillbox-shared
+chown -R dev:dev /var/lib/chillbox-shared
+chmod -R 700 /var/lib/chillbox-shared
 SETUP
 
 USER dev

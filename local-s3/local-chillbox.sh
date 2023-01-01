@@ -35,8 +35,8 @@ Environment:
   MINIO_ROOT_PASSWORD Default is 'chillllamabox'
 
 Docker volumes:
-  chillbox-minio-data                    Stores Minio data.
-  chillbox-local-shared-secrets-var-lib  Has the local s3 credential files
+  chillbox-minio-data    Stores Minio data.
+  chillbox-local-shared  Has the local s3 credential files
 
 Files:
   $site_data_home/local-chillbox_object_storage-credentials
@@ -122,22 +122,22 @@ docker exec chillbox-minio mc admin user add local "${local_chillbox_app_key_id}
 docker exec chillbox-minio mc admin policy set local readwrite user="${local_chillbox_app_key_id}" 2> /dev/null || printf ""
 
 # Don't show errors when restarting this container.
-docker stop --time 0 chillbox-local-shared-secrets > /dev/null 2>&1 || printf ""
-docker rm  chillbox-local-shared-secrets > /dev/null 2>&1 || printf ""
-docker image rm chillbox-local-shared-secrets > /dev/null 2>&1 || printf ""
+docker stop --time 0 chillbox-local-shared > /dev/null 2>&1 || printf ""
+docker rm  chillbox-local-shared > /dev/null 2>&1 || printf ""
+docker image rm chillbox-local-shared > /dev/null 2>&1 || printf ""
 # Avoid adding docker context by using stdin for the Dockerfile.
-DOCKER_BUILDKIT=1 docker build --progress=plain -t chillbox-local-shared-secrets - < "$project_dir/local-shared-secrets.Dockerfile" > /dev/null 2>&1
+DOCKER_BUILDKIT=1 docker build --progress=plain -t chillbox-local-shared - < "$project_dir/local-shared.Dockerfile" > /dev/null 2>&1
 docker run -d --rm \
-  --name  chillbox-local-shared-secrets \
-  --mount "type=volume,src=chillbox-local-shared-secrets-var-lib,dst=/var/lib/chillbox-shared-secrets,readonly=false" \
-  chillbox-local-shared-secrets > /dev/null
+  --name  chillbox-local-shared \
+  --mount "type=volume,src=chillbox-local-shared,dst=/var/lib/chillbox-local-shared,readonly=false" \
+  chillbox-local-shared > /dev/null
 
-printf "\n%s\n" "Waiting for chillbox-local-shared-secrets container to be in running state."
+printf "\n%s\n" "Waiting for chillbox-local-shared container to be in running state."
 while true; do
-  is_chillbox_local_shared_secrets_running="$(docker inspect --format '{{.State.Running}}' chillbox-local-shared-secrets 2> /dev/null || printf "")"
-  if [ "$is_chillbox_local_shared_secrets_running" = "true" ]; then
-    chillbox_local_shared_secrets_state="$(docker inspect --format '{{.State.Status}}' chillbox-local-shared-secrets 2> /dev/null || printf "")"
-    echo "chillbox-local-shared-secrets: $chillbox_local_shared_secrets_state"
+  is_chillbox_local_shared_running="$(docker inspect --format '{{.State.Running}}' chillbox-local-shared 2> /dev/null || printf "")"
+  if [ "$is_chillbox_local_shared_running" = "true" ]; then
+    chillbox_local_shared_state="$(docker inspect --format '{{.State.Status}}' chillbox-local-shared 2> /dev/null || printf "")"
+    echo "chillbox-local-shared: $chillbox_local_shared_state"
     break
   else
     printf "."
@@ -155,7 +155,7 @@ HERE
 # Make this local-chillbox_object_storage-credentials available for other
 # containers that may need to interact with the local chillbox minio s3 object
 # store.
-docker exec --user root chillbox-local-shared-secrets mkdir -p "/var/lib/chillbox-shared-secrets/chillbox-minio/$slugname-$project_dir_basename"
-docker exec --user root chillbox-local-shared-secrets chmod -R 700 "/var/lib/chillbox-shared-secrets/chillbox-minio/$slugname-$project_dir_basename"
-docker exec --user root chillbox-local-shared-secrets chown -R dev:dev "/var/lib/chillbox-shared-secrets/chillbox-minio/$slugname-$project_dir_basename"
-docker cp "$site_data_home/local-chillbox_object_storage-credentials" chillbox-local-shared-secrets:"/var/lib/chillbox-shared-secrets/chillbox-minio/$slugname-$project_dir_basename/local-chillbox_object_storage-credentials"
+docker exec --user root chillbox-local-shared mkdir -p "/var/lib/chillbox-local-shared/chillbox-minio/$slugname-$project_dir_basename"
+docker exec --user root chillbox-local-shared chmod -R 700 "/var/lib/chillbox-local-shared/chillbox-minio/$slugname-$project_dir_basename"
+docker exec --user root chillbox-local-shared chown -R dev:dev "/var/lib/chillbox-local-shared/chillbox-minio/$slugname-$project_dir_basename"
+docker cp "$site_data_home/local-chillbox_object_storage-credentials" chillbox-local-shared:"/var/lib/chillbox-local-shared/chillbox-minio/$slugname-$project_dir_basename/local-chillbox_object_storage-credentials"
