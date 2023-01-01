@@ -1,16 +1,17 @@
 #!/usr/bin/env sh
 
+# This file was generated from the chillbox-site directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
+
 set -o errexit
 
 slugname="site1"
 
-project_dir="$(dirname "$(realpath "$0")")"
+project_dir="$(dirname "$(dirname "$(realpath "$0")")")"
 script_name="$(basename "$0")"
 project_name_hash="$(printf "%s" "$project_dir" | md5sum | cut -d' ' -f1)"
 test "${#project_name_hash}" -eq "32" || (echo "ERROR $script_name: Failed to create a project name hash from the project dir ($project_dir)" && exit 1)
-project_dir_basename="$(basename "$project_dir")"
 
-site_data_home="${XDG_DATA_HOME:-"$HOME/.local/share"}/$slugname-$project_dir_basename--$project_name_hash"
+site_data_home="${XDG_DATA_HOME:-"$HOME/.local/share"}/$slugname-local-s3--$project_name_hash"
 mkdir -p "$site_data_home"
 
 usage() {
@@ -64,8 +65,8 @@ minio_image="bitnami/minio:2022.3.26-debian-10-r4@sha256:398ea232ada79b41d2d0b0b
 # used for the local S3 object storage server (Minio).
 # WARNING: Do NOT use actual AWS credentials here!
 # The access key id is also used as the user name and has a limit of 64 characters.
-local_chillbox_app_key_id="$(printf "%s" "$slugname-$project_dir_basename--$project_name_hash" | grep -o -E '^.{0,64}')"
-local_chillbox_secret_access_key="readwrite-policy-$slugname-$project_dir_basename--$project_name_hash"
+local_chillbox_app_key_id="$(printf "%s" "$slugname-local-s3--$project_name_hash" | grep -o -E '^.{0,64}')"
+local_chillbox_secret_access_key="readwrite-policy-$slugname-local-s3--$project_name_hash"
 
 # The bucket names are meant to be shared across multiple local apps. This
 # matches the chillbox design used in production.
@@ -121,30 +122,6 @@ docker logs chillbox-minio
 docker exec chillbox-minio mc admin user add local "${local_chillbox_app_key_id}" "${local_chillbox_secret_access_key}" 2> /dev/null || printf ""
 docker exec chillbox-minio mc admin policy set local readwrite user="${local_chillbox_app_key_id}" 2> /dev/null || printf ""
 
-# Don't show errors when restarting this container.
-docker stop --time 0 chillbox-local-shared > /dev/null 2>&1 || printf ""
-docker rm  chillbox-local-shared > /dev/null 2>&1 || printf ""
-docker image rm chillbox-local-shared > /dev/null 2>&1 || printf ""
-# Avoid adding docker context by using stdin for the Dockerfile.
-DOCKER_BUILDKIT=1 docker build --progress=plain -t chillbox-local-shared - < "$project_dir/local-shared.Dockerfile" > /dev/null 2>&1
-docker run -d --rm \
-  --name  chillbox-local-shared \
-  --mount "type=volume,src=chillbox-local-shared,dst=/var/lib/chillbox-local-shared,readonly=false" \
-  chillbox-local-shared > /dev/null
-
-printf "\n%s\n" "Waiting for chillbox-local-shared container to be in running state."
-while true; do
-  is_chillbox_local_shared_running="$(docker inspect --format '{{.State.Running}}' chillbox-local-shared 2> /dev/null || printf "")"
-  if [ "$is_chillbox_local_shared_running" = "true" ]; then
-    chillbox_local_shared_state="$(docker inspect --format '{{.State.Status}}' chillbox-local-shared 2> /dev/null || printf "")"
-    echo "chillbox-local-shared: $chillbox_local_shared_state"
-    break
-  else
-    printf "."
-    sleep 0.1
-  fi
-done
-
 cat <<HERE > "$site_data_home/local-chillbox_object_storage-credentials"
 [chillbox_object_storage]
 # Generated via $0
@@ -152,10 +129,33 @@ aws_access_key_id=${local_chillbox_app_key_id}
 aws_secret_access_key=${local_chillbox_secret_access_key}
 HERE
 
+# Sleeper image needs no context.
+sleeper_image="$project_name_hash-sleeper"
+docker image rm "$sleeper_image" > /dev/null 2>&1 || printf ""
+export DOCKER_BUILDKIT=1
+< "$project_dir/bin/sleeper.Dockerfile" \
+  docker build \
+    -t "$sleeper_image" \
+    - > /dev/null 2>&1
+
+container_name="$(printf '%s' "$slugname-local-s3-sleeper-$project_name_hash" | grep -o -E '^.{0,63}')"
+docker stop --time 0 "$container_name" > /dev/null 2>&1 || printf ""
+docker rm "$container_name" > /dev/null 2>&1 || printf ""
+docker run \
+  -d \
+  --name "$container_name" \
+  --mount "type=volume,src=chillbox-local-shared,dst=/var/lib/chillbox-local-shared,readonly=false" \
+  "$sleeper_image" > /dev/null || (
+    exitcode="$?"
+    echo "docker exited with $exitcode exitcode. Ignoring"
+  )
+
 # Make this local-chillbox_object_storage-credentials available for other
 # containers that may need to interact with the local chillbox minio s3 object
 # store.
-docker exec --user root chillbox-local-shared mkdir -p "/var/lib/chillbox-local-shared/chillbox-minio/$slugname-$project_dir_basename"
-docker exec --user root chillbox-local-shared chmod -R 700 "/var/lib/chillbox-local-shared/chillbox-minio/$slugname-$project_dir_basename"
-docker exec --user root chillbox-local-shared chown -R dev:dev "/var/lib/chillbox-local-shared/chillbox-minio/$slugname-$project_dir_basename"
-docker cp "$site_data_home/local-chillbox_object_storage-credentials" chillbox-local-shared:"/var/lib/chillbox-local-shared/chillbox-minio/$slugname-$project_dir_basename/local-chillbox_object_storage-credentials"
+docker exec --user root "$container_name" mkdir -p "/var/lib/chillbox-local-shared/chillbox-minio/$slugname-local-s3"
+docker exec --user root "$container_name" chmod -R 700 "/var/lib/chillbox-local-shared/chillbox-minio/$slugname-local-s3"
+docker exec --user root "$container_name" chown -R dev:dev "/var/lib/chillbox-local-shared/chillbox-minio/$slugname-local-s3"
+docker cp "$site_data_home/local-chillbox_object_storage-credentials" "$container_name":"/var/lib/chillbox-local-shared/chillbox-minio/$slugname-local-s3/local-chillbox_object_storage-credentials"
+docker stop --time 0 "$container_name" > /dev/null 2>&1 || printf ""
+docker rm "$container_name" > /dev/null 2>&1 || printf ""
