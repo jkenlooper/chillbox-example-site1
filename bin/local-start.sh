@@ -86,7 +86,7 @@ export CHILLBOX_SERVER_NAME=chillbox.test
 export CHILLBOX_SERVER_PORT=80
 export IMMUTABLE_BUCKET_DOMAIN_NAME=chillbox-minio:9000
 export IMMUTABLE_BUCKET_NAME=chillboximmutable
-export LETS_ENCRYPT_SERVER=letsencrypt_test
+export ACME_SERVER=letsencrypt_test
 export S3_ENDPOINT_URL=http://chillbox-minio:9000
 # SERVER_NAME is set to empty string so nginx will not require Host header; which is useful for local development.
 export SERVER_NAME='""'
@@ -152,7 +152,7 @@ CHILLBOX_SERVER_NAME=chillbox.test
 CHILLBOX_SERVER_PORT=80
 IMMUTABLE_BUCKET_DOMAIN_NAME=chillbox-minio:9000
 IMMUTABLE_BUCKET_NAME=chillboximmutable
-LETS_ENCRYPT_SERVER=letsencrypt_test
+ACME_SERVER=letsencrypt_test
 S3_ENDPOINT_URL=http://chillbox-minio:9000
 # Not setting server_name to allow it to be set differently in each Dockerfile
 # if needed.
@@ -241,6 +241,7 @@ for service_json_obj in "$@"; do
         -e HOST="localhost" \
         -e SECRETS_CONFIG="/var/lib/local-secrets/$slugname/$service_handler/$secrets_config" \
         --network chillboxnet \
+        --mount "type=volume,src=chillbox-local-shared,dst=/var/lib/chillbox-local-shared,readonly=true" \
         --mount "type=bind,src=$project_dir/$service_handler/src/${slugname}_${service_handler},dst=/usr/local/src/app/src/${slugname}_${service_handler},readonly" \
         --mount "type=bind,src=$not_encrypted_secrets_dir/$service_handler/$secrets_config,dst=/var/lib/local-secrets/$slugname/$service_handler/$secrets_config,readonly" \
         "$image_name"
@@ -264,6 +265,7 @@ for service_json_obj in "$@"; do
             -e HOST="localhost" \
             -e SECRETS_CONFIG="/var/lib/local-secrets/$slugname/$service_handler/$secrets_config" \
             --network chillboxnet \
+            --mount "type=volume,src=chillbox-local-shared,dst=/var/lib/chillbox-local-shared,readonly=true" \
             --mount "type=bind,src=$project_dir/$service_handler/src/${slugname}_${service_handler},dst=/usr/local/src/app/src/${slugname}_${service_handler},readonly" \
             --mount "type=bind,src=$not_encrypted_secrets_dir/$service_handler/$secrets_config,dst=/var/lib/local-secrets/$slugname/$service_handler/$secrets_config,readonly" \
             "$image_name" ./sleep.sh

@@ -1,4 +1,4 @@
-# TODO: Replace header "Immutable Make Example"
+# Immutable Make Example
 
 This directory holds the source files that will be processed by the Makefile and
 associated *.mk files.
