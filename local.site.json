@@ -11,53 +11,53 @@
   ],
   "env": [
     {
-      "name": "CHILL_STATIC_EXAMPLE_TRY_FILES_LAST_PARAM",
-      "value": "@chill-static-example"
+      "name": "CHILL_STATIC_TRY_FILES_LAST_PARAM",
+      "value": "@chillstatic"
     },
     {
-      "name": "CHILL_STATIC_EXAMPLE_TRY_FILES_LAST_PARAM__chillbox",
+      "name": "CHILL_STATIC_TRY_FILES_LAST_PARAM__chillbox",
       "value": "=404"
     },
     {
-      "name": "CHILL_STATIC_EXAMPLE_PATH",
+      "name": "CHILL_STATIC_PATH",
       "value": "/"
     },
     {
-      "name": "CHILL_STATIC_EXAMPLE_SCHEME",
+      "name": "CHILL_STATIC_SCHEME",
       "value": "http"
     },
     {
-      "name": "CHILL_STATIC_EXAMPLE_HOST",
+      "name": "CHILL_STATIC_HOST",
       "value": "$SLUGNAME-chillstatic-$PROJECT_NAME_HASH",
       "cmd": "printf '%s' '$SLUGNAME-chillstatic-$PROJECT_NAME_HASH' | grep -o -E '^.{0,63}'"
     },
     {
-      "name": "CHILL_STATIC_EXAMPLE_HOST__chillbox",
+      "name": "CHILL_STATIC_HOST__chillbox",
       "value": "localhost"
     },
     {
-      "name": "CHILL_STATIC_EXAMPLE_PORT",
+      "name": "CHILL_STATIC_PORT",
       "value": "38011"
     },
     {
-      "name": "CHILL_DYNAMIC_EXAMPLE_PATH",
+      "name": "CHILL_DYNAMIC_PATH",
       "value": "/dynamic/"
     },
     {
-      "name": "CHILL_DYNAMIC_EXAMPLE_PORT",
+      "name": "CHILL_DYNAMIC_PORT",
       "value": "38012"
     },
     {
-      "name": "CHILL_DYNAMIC_EXAMPLE_SCHEME",
+      "name": "CHILL_DYNAMIC_SCHEME",
       "value": "http"
     },
     {
-      "name": "CHILL_DYNAMIC_EXAMPLE_HOST",
+      "name": "CHILL_DYNAMIC_HOST",
       "value": "$SLUGNAME-chilldynamic-$PROJECT_NAME_HASH",
       "cmd": "printf '%s' '$SLUGNAME-chilldynamic-$PROJECT_NAME_HASH' | grep -o -E '^.{0,63}'"
     },
     {
-      "name": "CHILL_DYNAMIC_EXAMPLE_HOST__chillbox",
+      "name": "CHILL_DYNAMIC_HOST__chillbox",
       "value": "localhost"
     },
     {
@@ -183,7 +183,7 @@
         },
         {
           "name": "HOST",
-          "value": "$CHILL_STATIC_EXAMPLE_HOST"
+          "value": "$CHILL_STATIC_HOST"
         },
         {
           "name": "CHILL_HOST",
@@ -191,7 +191,7 @@
         },
         {
           "name": "CHILL_PORT",
-          "value": "$CHILL_STATIC_EXAMPLE_PORT"
+          "value": "$CHILL_STATIC_PORT"
         }
       ]
     },
@@ -207,7 +207,7 @@
         },
         {
           "name": "HOST",
-          "value": "$CHILL_DYNAMIC_EXAMPLE_HOST"
+          "value": "$CHILL_DYNAMIC_HOST"
         },
         {
           "name": "CHILL_HOST",
@@ -215,11 +215,11 @@
         },
         {
           "name": "CHILL_PORT",
-          "value": "$CHILL_DYNAMIC_EXAMPLE_PORT"
+          "value": "$CHILL_DYNAMIC_PORT"
         },
         {
           "name": "CHILL_PUBLIC_URL_PREFIX",
-          "value": "$CHILL_DYNAMIC_EXAMPLE_PATH"
+          "value": "$CHILL_DYNAMIC_PATH"
         }
       ]
     }
