@@ -1,6 +1,15 @@
 server {
   listen ${SERVER_PORT};
 
+  # Chillbox will replace the
+  # /etc/nginx/conf.d/${SLUGNAME}.ssl_cert.include file with the following
+  # depending on the existance of these cert files. Otherwise, it will just
+  # create a blank file so the use of the nginx 'include' directive will work.
+  ## listen 443 ssl http2;
+  ## ssl_certificate /etc/letsencrypt/live/$SLUGNAME/fullchain.pem;
+  ## ssl_certificate_key /etc/letsencrypt/live/$SLUGNAME/privkey.pem;
+  include /etc/nginx/conf.d/${SLUGNAME}.ssl_cert.include;
+
   # Use special wildcard server_name by prefixing with '.' so
   # [chillbox-hostname].${SERVER_NAME} will also match.
   # https://nginx.org/en/docs/http/server_names.html
@@ -45,12 +54,12 @@ server {
     proxy_set_header X-Forwarded-Prefix /;
   }
 
-  # For SSL cert validation
-  location /.well-known/ {
+  # For SSL cert validation using certbot webroot plugin.
+  location /.well-known/acme-challenge/ {
     limit_except GET {
       deny all;
     }
-    root /srv/${SLUGNAME}/;
+    root /srv/${SLUGNAME};
   }
 
   location ${IMMUTABLE_EXAMPLE_PATH} {
