@@ -1,5 +1,6 @@
 *
 !/default.nginx.conf
 !/nginx.conf
+!/site1.ssl_cert.include
 !/root/*
 !/templates/*
