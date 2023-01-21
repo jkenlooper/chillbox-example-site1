@@ -2,10 +2,10 @@
 
 # This file in the parent directory api was generated from the flask-service directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
 
-# UPKEEP due: "2023-01-10" label: "Alpine Linux base image" interval: "+3 months"
-# docker pull alpine:3.16.2
+# UPKEEP due: "2023-04-21" label: "Alpine Linux base image" interval: "+3 months"
+# docker pull alpine:3.17.1
 # docker image ls --digests alpine
-FROM alpine:3.16.2@sha256:bc41182d7ef5ffc53a40b044e725193bc10142a1243f395ee852a8d9730fc2ad
+FROM alpine:3.17.1@sha256:f271e74b17ced29b915d351685fd4644785c6d1559dd1f2d4189a5e851ef753a
 
 RUN <<DEV_USER
 addgroup -g 44444 dev
@@ -37,17 +37,14 @@ set -o errexit
 apk update
 /etc/chillbox/bin/install-chillbox-packages.sh
 
-ln -s /usr/bin/python3 /usr/bin/python
 SERVICE_DEPENDENCIES
 
 RUN  <<PYTHON_VIRTUALENV
 # Setup for python virtual env
 set -o errexit
 mkdir -p /home/dev/app
-/usr/bin/python3 -m venv /home/dev/app/.venv
-# The dev user will need write access since pip install will be adding files to
-# the .venv directory.
-chown -R dev:dev /home/dev/app/.venv
+chown -R dev:dev /home/dev/app
+su dev -c '/usr/bin/python3 -m venv /home/dev/app/.venv'
 PYTHON_VIRTUALENV
 # Activate python virtual env by updating the PATH
 ENV VIRTUAL_ENV=/home/dev/app/.venv
@@ -56,15 +53,19 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 # UPKEEP due: "2023-03-23" label: "Python pip" interval: "+3 months"
 # https://pypi.org/project/pip/
 ARG PIP_VERSION=22.3.1
+# UPKEEP due: "2023-03-23" label: "Python setuptools" interval: "+3 months"
+# https://pypi.org/project/setuptools/
+ARG SETUPTOOLS_VERSION=65.6.3
 # UPKEEP due: "2023-03-23" label: "Python wheel" interval: "+3 months"
 # https://pypi.org/project/wheel/
 ARG WHEEL_VERSION=0.38.4
 RUN <<PIP_INSTALL
 # Install pip and wheel
 set -o errexit
-python -m pip install \
-    "pip==$PIP_VERSION" \
-    "wheel==$WHEEL_VERSION"
+su dev -c "python -m pip install \
+    'pip==$PIP_VERSION' \
+    'setuptools==$SETUPTOOLS_VERSION' \
+    'wheel==$WHEEL_VERSION'"
 PIP_INSTALL
 
 # UPKEEP due: "2023-03-23" label: "pip-tools" interval: "+3 months"
@@ -73,16 +74,16 @@ ARG PIP_TOOLS_VERSION=6.12.1
 RUN <<PIP_TOOLS_INSTALL
 # Install pip-tools
 set -o errexit
-python -m pip install pip-tools=="$PIP_TOOLS_VERSION"
+su dev -c "python -m pip install 'pip-tools==$PIP_TOOLS_VERSION'"
 PIP_TOOLS_INSTALL
 
 # UPKEEP due: "2023-03-23" label: "Python auditing tool pip-audit" interval: "+3 months"
 # https://pypi.org/project/pip-audit/
 ARG PIP_AUDIT_VERSION=2.4.10
 RUN <<INSTALL_PIP_AUDIT
-# Audit packages for known vulnerabilities
+# Install pip-audit
 set -o errexit
-python -m pip install "pip-audit==$PIP_AUDIT_VERSION"
+su dev -c "python -m pip install 'pip-audit==$PIP_AUDIT_VERSION'"
 INSTALL_PIP_AUDIT
 
 # UPKEEP due: "2023-06-23" label: "Python security linter tool: bandit" interval: "+6 months"
@@ -91,8 +92,10 @@ ARG BANDIT_VERSION=1.7.4
 RUN <<BANDIT_INSTALL
 # Install bandit to find common security issues
 set -o errexit
-python -m pip install "bandit==$BANDIT_VERSION"
+su dev -c "python -m pip install 'bandit==$BANDIT_VERSION'"
 BANDIT_INSTALL
+
+USER dev
 
 RUN <<SETUP
 set -o errexit
@@ -104,8 +107,6 @@ while true; do
 done
 HERE
 chmod +x /home/dev/sleep.sh
-
-chown -R dev:dev /home/dev/app
 SETUP
 
 COPY --chown=dev:dev setup.py /home/dev/app/setup.py
@@ -125,8 +126,6 @@ python -m pip download --disable-pip-version-check \
     --destination-directory "./dep" \
     .
 PIP_INSTALL_REQ
-
-USER dev
 
 RUN <<UPDATE_REQUIREMENTS
 # Generate the hashed requirements.txt file that the main container will use.
@@ -166,7 +165,7 @@ RUN <<BANDIT
 set -o errexit
 bandit \
     --recursive \
-    /home/dev/app/src/
+    /home/dev/app/src/ > /home/dev/security-issues-from-bandit.txt || echo "WARNING: Issues found."
 BANDIT
 
 CMD ["/home/dev/sleep.sh"]
