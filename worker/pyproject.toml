@@ -23,7 +23,7 @@ test = [
 ]
 
 [project.scripts]
-start = "site1_worker.script:main"
+site1_worker_run = "site1_worker.script:main"
 
 [tool.hatch.build.targets.sdist]
 include = [
