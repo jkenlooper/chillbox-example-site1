@@ -1,0 +1,12 @@
+# This file in the parent directory worker was generated from the python-worker directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
+
+*
+!/requirements.txt
+!/pip-requirements.txt
+!/verify-run-audit.sh
+!/pyproject.toml
+!/src/*
+!/README.md
+!/secrets.sh
+!/tests/*
+!/dep/*

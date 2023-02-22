@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "site1-worker"
+version = "0.0.1"
+description = "Python Worker site1 worker"
+readme = "README.md"
+requires-python = ">=3.9, <4"
+
+# TODO: Example of adding dependencies for a worker that uses arq.
+# dependencies = [
+#     "arq",
+#     "redis[hiredis]",
+#     "httpx",
+# ]
+
+[project.optional-dependencies]
+test = [
+    "coverage",
+    "pytest",
+]
+
+[project.scripts]
+start = "site1_worker.script:main"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+]
