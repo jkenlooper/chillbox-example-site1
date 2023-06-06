@@ -2,8 +2,10 @@
 
 *
 !/requirements.txt
+!/requirements-dev.txt
+!/requirements-test.txt
 !/pip-requirements.txt
-!/verify-run-audit.sh
+!/update-dep-run-audit.sh
 !/pyproject.toml
 !/src/*
 !/README.md

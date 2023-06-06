@@ -3,7 +3,7 @@
 set -o errexit
 
 # This file in the parent directory immutable-example was generated from the immutable-make directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
-# Version: 0.0.1-alpha.1
+# Version: 0.0.1-alpha.2
 
 script_name="$(basename "$0")"
 script_dir="$(dirname "$0")"
@@ -47,7 +47,7 @@ build_and_run() {
 # For local development; this can be on the host network. The BIND is set to
 # localhost so only localhost can access. Switch it to 0.0.0.0 to allow anyone
 # else on that network to access.
-IMMUTABLE_EXAMPLE_PORT="8080"
+IMMUTABLE_EXAMPLE_PORT="38014"
 IMMUTABLE_EXAMPLE_BIND="127.0.0.1"
 
 stop_and_rm_containers_silently

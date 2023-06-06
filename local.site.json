@@ -197,10 +197,6 @@
         {
           "name": "FLASK_DEBUG",
           "value": "true"
-        },
-        {
-          "name": "FLASK_INSTANCE_PATH",
-          "value": "/var/lib/$SLUGNAME/api"
         }
       ]
     },

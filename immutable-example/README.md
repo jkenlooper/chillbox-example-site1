@@ -1,4 +1,4 @@
-# Immutable Make Example
+# TODO: Replace header "Immutable Make Example"
 
 This directory holds the source files that will be processed by the Makefile and
 associated *.mk files.
@@ -14,5 +14,8 @@ cookiecutter --directory immutable-make \
   --overwrite-if-exists \
   --no-input \
   https://github.com/jkenlooper/cookiecutters.git \
-  slugname=site1
+  slugname=site1 \
+  project_slug=immutable-example \
+  project_slug_upper=IMMUTABLE_EXAMPLE \
+  project_port=38014
 ```

@@ -1,12 +1,12 @@
-# syntax=docker/dockerfile:1.4.3
+# syntax=docker/dockerfile:1.5.2
 
 # This file in the parent directory immutable-example was generated from the immutable-make directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
-# Version: 0.0.1-alpha.1
+# Version: 0.0.1-alpha.2
 
-# UPKEEP due: "2023-01-10" label: "Alpine Linux base image" interval: "+3 months"
-# docker pull alpine:3.16.2
+# UPKEEP due: "2023-09-03" label: "Alpine Linux base image" interval: "+3 months"
+# docker pull alpine:3.18.0
 # docker image ls --digests alpine
-FROM alpine:3.16.2@sha256:bc41182d7ef5ffc53a40b044e725193bc10142a1243f395ee852a8d9730fc2ad as build
+FROM alpine:3.18.0@sha256:02bb6f428431fbc2809c5d1b41eab5a68350194fb508869a33cb1af4444c9b11 as build
 
 WORKDIR /build
 ARG LOCAL_CONTAINER=yes
@@ -15,8 +15,8 @@ ENV LOCAL_CONTAINER=$LOCAL_CONTAINER
 RUN <<DEV_USER
 # Create an unprivileged user that will only have access to /build directory.
 set -o errexit
-addgroup -g 2000 dev
-adduser -u 2000 -G dev -s /bin/sh -D dev
+addgroup -g 44444 dev
+adduser -u 44444 -G dev -s /bin/sh -D dev
 chown -R dev:dev /build
 DEV_USER
 
@@ -60,15 +60,13 @@ RUN /build/local-scripts/install.sh
 COPY --chown=dev:dev *.mk /build/
 COPY --chown=dev:dev src /build/src
 
-USER dev
-
 # Build the dist files inside the container
 RUN /build/local-scripts/build.sh
 
 # Need to bind to all addresses (0.0.0.0) as the default when within the site's
 # network.
 ENV BIND=0.0.0.0
-ENV IMMUTABLE_EXAMPLE_PORT=8080
+ENV IMMUTABLE_EXAMPLE_PORT=38014
 
 # Default command is to run the dev.sh script to watch files and build and serve
 # them.

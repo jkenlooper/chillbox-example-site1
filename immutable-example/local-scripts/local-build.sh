@@ -3,7 +3,7 @@
 set -o errexit
 
 # This file in the parent directory immutable-example was generated from the immutable-make directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
-# Version: 0.0.1-alpha.1
+# Version: 0.0.1-alpha.2
 
 script_name="$(basename "$0")"
 script_dir="$(dirname "$0")"
@@ -78,6 +78,6 @@ docker build \
   "${project_dir}"
 docker run \
   --name "$container_name" \
-  "$image_name" ls /build/dist
+  "$image_name" tree /build/dist
 docker cp "$container_name":/build/dist "$project_dir/"
 stop_and_rm_containers_silently

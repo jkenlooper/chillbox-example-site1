@@ -82,6 +82,9 @@ MEOW
 # shellcheck disable=SC1091
 . "$chillbox_config_file"
 
+docker network create chillboxnet > /dev/null 2>&1 || printf ""
+chillbox_subnet="$(docker network inspect chillboxnet --format "{{range .IPAM.Config}}{{print .Subnet}}{{end}}")"
+
 cat <<MEOW > "$site_env"
 export ARTIFACT_BUCKET_NAME=chillboxartifact
 export CHILLBOX_SERVER_NAME=chillbox.test
@@ -90,8 +93,8 @@ export IMMUTABLE_BUCKET_DOMAIN_NAME=chillbox-minio:9000
 export IMMUTABLE_BUCKET_NAME=chillboximmutable
 export ACME_SERVER=letsencrypt_test
 export S3_ENDPOINT_URL=http://chillbox-minio:9000
-# SERVER_NAME is set to empty string so nginx will not require Host header; which is useful for local development.
-export SERVER_NAME='""'
+export SERVER_NAME=localhost
+export CHILLBOX_SUBNET="$chillbox_subnet"
 export SERVER_PORT=$app_port
 export SLUGNAME=$slugname
 export TECH_EMAIL=llama@local.test
@@ -155,9 +158,8 @@ IMMUTABLE_BUCKET_DOMAIN_NAME=chillbox-minio:9000
 IMMUTABLE_BUCKET_NAME=chillboximmutable
 ACME_SERVER=letsencrypt_test
 S3_ENDPOINT_URL=http://chillbox-minio:9000
-# Not setting server_name to allow it to be set differently in each Dockerfile
-# if needed.
-#SERVER_NAME=
+SERVER_NAME=localhost
+CHILLBOX_SUBNET=$chillbox_subnet
 SERVER_PORT=$app_port
 SLUGNAME=$slugname
 TECH_EMAIL=llama@local.test
@@ -238,6 +240,9 @@ for worker_json_obj in "$@"; do
         --mount "type=bind,src=$project_dir/$worker_handler/src/${slugname}_${worker_handler},dst=/usr/local/src/app/src/${slugname}_${worker_handler},readonly" \
         --mount "type=bind,src=$not_encrypted_secrets_dir/$worker_handler/$secrets_config,dst=/var/lib/local-secrets/$slugname/$worker_handler/$secrets_config,readonly" \
         "$image_name" > /dev/null
+
+      # Delay so the code on the worker can execute first.
+      sleep 1
 
       container_status="$(docker container inspect "$container_name" | jq -r '.[0].State.Status')"
       i="0"
@@ -346,13 +351,16 @@ for service_json_obj in "$@"; do
         --name "$container_name" \
         --env-file "$site_env_vars_file" \
         --env-file "$tmp_service_env_vars_file" \
-        -e HOST="localhost" \
+        -e BIND="0.0.0.0:$PORT" \
         -e SECRETS_CONFIG="/var/lib/local-secrets/$slugname/$service_handler/$secrets_config" \
         --network chillboxnet \
         --mount "type=volume,src=chillbox-local-shared,dst=/var/lib/chillbox-local-shared,readonly=true" \
         --mount "type=bind,src=$project_dir/$service_handler/src/${slugname}_${service_handler},dst=/usr/local/src/app/src/${slugname}_${service_handler},readonly" \
         --mount "type=bind,src=$not_encrypted_secrets_dir/$service_handler/$secrets_config,dst=/var/lib/local-secrets/$slugname/$service_handler/$secrets_config,readonly" \
         "$image_name" > /dev/null
+
+      # Delay so the code on the service can execute first.
+      sleep 1
 
       container_status="$(docker container inspect $container_name | jq -r '.[0].State.Status')"
       i="0"
@@ -379,7 +387,7 @@ for service_json_obj in "$@"; do
             --user root \
             --env-file "$site_env_vars_file" \
             --env-file "$tmp_service_env_vars_file" \
-            -e HOST="localhost" \
+            -e BIND="0.0.0.0:$PORT" \
             -e SECRETS_CONFIG="/var/lib/local-secrets/$slugname/$service_handler/$secrets_config" \
             --network chillboxnet \
             --mount "type=volume,src=chillbox-local-shared,dst=/var/lib/chillbox-local-shared,readonly=true" \

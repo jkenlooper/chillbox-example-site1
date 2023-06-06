@@ -1,18 +1,18 @@
-# syntax=docker/dockerfile:1.4.3
+# syntax=docker/dockerfile:1.5.2
 
-# This file in the parent directory api was generated from the flask-service directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
+# This file in the parent directory api was generated from the python-service directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
 
-# UPKEEP due: "2023-04-21" label: "Alpine Linux base image" interval: "+3 months"
-# docker pull alpine:3.17.1
+# UPKEEP due: "2023-09-03" label: "Alpine Linux base image" interval: "+3 months"
+# docker pull alpine:3.18.0
 # docker image ls --digests alpine
-FROM alpine:3.17.1@sha256:f271e74b17ced29b915d351685fd4644785c6d1559dd1f2d4189a5e851ef753a
+FROM alpine:3.18.0@sha256:02bb6f428431fbc2809c5d1b41eab5a68350194fb508869a33cb1af4444c9b11
 
 RUN <<DEV_USER
 addgroup -g 44444 dev
 adduser -u 44444 -G dev -s /bin/sh -D dev
 DEV_USER
 
-WORKDIR /usr/local/src/app/
+WORKDIR /home/dev/app
 
 # UPKEEP due: "2023-03-23" label: "Chillbox cli shared scripts" interval: "+3 months"
 # https://github.com/jkenlooper/chillbox
@@ -27,6 +27,8 @@ tmp_tar_gz="$(mktemp)"
 wget -q -O "$tmp_tar_gz" \
   "https://github.com/jkenlooper/chillbox/releases/download/$CHILLBOX_CLI_VERSION/chillbox-cli.tar.gz"
 tar x -f "$tmp_tar_gz" -z -C /etc/chillbox/bin --strip-components 4 ./src/chillbox/bin/install-chillbox-packages.sh
+# TODO
+# tar x -f "$tmp_tar_gz" -z -C /etc/chillbox --strip-components 3 ./src/chillbox/pip-requirements.txt
 chown root:root /etc/chillbox/bin/install-chillbox-packages.sh
 rm -f "$tmp_tar_gz"
 CHILLBOX_PACKAGES
@@ -39,38 +41,13 @@ apk update
 
 SERVICE_DEPENDENCIES
 
-RUN  <<PYTHON_VIRTUALENV
-# Setup for python virtual env
-set -o errexit
-mkdir -p /usr/local/src/app
-chown -R dev:dev /usr/local/src/app
-su dev -c '/usr/bin/python3 -m venv /usr/local/src/app/.venv'
-PYTHON_VIRTUALENV
-# Activate python virtual env by updating the PATH
-ENV VIRTUAL_ENV=/usr/local/src/app/.venv
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-
-# UPKEEP due: "2023-03-23" label: "Python pip" interval: "+3 months"
-# https://pypi.org/project/pip/
-ARG PIP_VERSION=22.3.1
-# UPKEEP due: "2023-03-23" label: "Python wheel" interval: "+3 months"
-# https://pypi.org/project/wheel/
-ARG WHEEL_VERSION=0.38.4
-RUN <<PIP_INSTALL
-# Install pip and wheel
-set -o errexit
-su dev -c "python -m pip install 'pip==$PIP_VERSION' 'wheel==$WHEEL_VERSION'"
-PIP_INSTALL
-
-ARG FLASK_INSTANCE_PATH=/var/lib/site1/
-ENV FLASK_INSTANCE_PATH=$FLASK_INSTANCE_PATH
 RUN <<FLASK_SETUP
+# Create instance_path and app directories.
 set -o errexit
-mkdir -p $FLASK_INSTANCE_PATH
-chown -R dev:dev $FLASK_INSTANCE_PATH
 
-mkdir -p /usr/local/src/app
-chown -R dev:dev /usr/local/src/app
+# Support an app instance_path (Mostly for Flask).
+mkdir -p /var/lib/site1/api/
+chown -R dev:dev /var/lib/site1/api/
 FLASK_SETUP
 
 RUN <<SUPPORT_LOCAL_S3
@@ -87,52 +64,117 @@ chmod 0600 /home/dev/.aws/credentials
 chown dev:dev /home/dev/.aws/credentials
 SUPPORT_LOCAL_S3
 
+RUN <<FILEWATCH_SUPPORT
+# Support for doing local development
+set -o errexit
+apk update
+apk add --no-cache \
+  entr
+FILEWATCH_SUPPORT
+
+RUN  <<PYTHON_VIRTUALENV
+# Setup for python virtual env
+set -o errexit
+mkdir -p /home/dev/app
+chown -R dev:dev /home/dev/app
+su dev -c 'python -m venv /home/dev/app/.venv'
+PYTHON_VIRTUALENV
+# Activate python virtual env by updating the PATH
+ENV VIRTUAL_ENV=/home/dev/app/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+COPY --chown=dev:dev pip-requirements.txt /home/dev/app/pip-requirements.txt
+COPY --chown=dev:dev pyproject.toml /home/dev/app/pyproject.toml
+COPY --chown=dev:dev dep /home/dev/app/dep
+COPY --chown=dev:dev README.md /home/dev/app/README.md
+
 USER dev
 
-# The dep directory should include the wheels and other source packages
-# created from running the verify.sh script.
-COPY --chown=dev:dev dep /usr/local/src/app/dep
+RUN <<PIP_DOWNLOAD
+# Download python packages listed in pyproject.toml
+set -o errexit
+# Install these first so packages like PyYAML don't have errors with 'bdist_wheel'
+python -m pip install wheel
+python -m pip install pip
+python -m pip install hatchling
+python -m pip download --disable-pip-version-check \
+    --exists-action i \
+    --no-build-isolation \
+    --find-links /home/dev/app/dep/ \
+    --destination-directory /home/dev/app/dep \
+    -r /home/dev/app/pip-requirements.txt
+python -m pip download --disable-pip-version-check \
+    --exists-action i \
+    --no-build-isolation \
+    --find-links /home/dev/app/dep/ \
+    --destination-directory /home/dev/app/dep \
+    .[dev,test]
+PIP_DOWNLOAD
 
-COPY --chown=dev:dev requirements.txt /usr/local/src/app/requirements.txt
-COPY --chown=dev:dev setup.py /usr/local/src/app/setup.py
-COPY --chown=dev:dev README.md /usr/local/src/app/README.md
-COPY --chown=dev:dev gunicorn.conf.py /usr/local/src/app/gunicorn.conf.py
-COPY --chown=dev:dev src /usr/local/src/app/src
+RUN <<PIP_INSTALL
+# Install pip-requirements.txt
+set -o errexit
+# Install these first so packages like PyYAML don't have errors with 'bdist_wheel'
+python -m pip install wheel
+python -m pip install pip
+python -m pip install hatchling
+python -m pip install \
+  --no-index \
+  --no-build-isolation \
+  --find-links /home/dev/app/dep/ \
+  -r /home/dev/app/pip-requirements.txt
+PIP_INSTALL
+
+COPY --chown=dev:dev requirements.txt /home/dev/app/requirements.txt
+COPY --chown=dev:dev requirements-dev.txt /home/dev/app/requirements-dev.txt
+COPY --chown=dev:dev requirements-test.txt /home/dev/app/requirements-test.txt
+COPY --chown=dev:dev pyproject.toml /home/dev/app/pyproject.toml
+COPY --chown=dev:dev README.md /home/dev/app/README.md
+COPY --chown=dev:dev gunicorn.conf.py /home/dev/app/gunicorn.conf.py
 RUN <<PIP_INSTALL_APP
-# Install app in editable mode and use the local python packages.
+# Install the local python packages.
 set -o errexit
 
 # Only pip install with the local python packages cache.
-# This uses the setup.py instead of the requirements.txt since this is for
-# development.
-pip install --disable-pip-version-check --compile \
-    --no-index \
-    --find-links /var/lib/chillbox/python \
-    gunicorn[gevent,setproctitle]
-pip install --disable-pip-version-check --compile \
-    --no-index \
-    -r /usr/local/src/app/requirements.txt
-pip install --disable-pip-version-check --compile \
-    --no-index \
-    -e /usr/local/src/app
+# The gunicorn was downloaded as part of install-chillbox-packages.sh script.
+python -m pip install --disable-pip-version-check --compile \
+  --no-index \
+  --no-build-isolation \
+  --find-links /var/lib/chillbox/python \
+  gunicorn[gevent,setproctitle]
+python -m pip install --disable-pip-version-check --compile \
+  --no-index \
+  --no-build-isolation \
+  -r /home/dev/app/requirements.txt
+python -m pip install --disable-pip-version-check --compile \
+  --no-index \
+  --no-build-isolation \
+  -r /home/dev/app/requirements-dev.txt
+python -m pip install --disable-pip-version-check --compile \
+  --no-index \
+  --no-build-isolation \
+  -r /home/dev/app/requirements-test.txt
 PIP_INSTALL_APP
 
-ENV FLASK_APP=site1_api.app
-ENV FLASK_DEBUG=false
-# Default to 1 worker and set worker-class to sync to match the default in chillbox.
-ENV GUNICORN_CMD_ARGS="--workers=1 --worker-class=sync --max-requests=50 --max-requests-jitter=10 --log-level=debug"
+COPY --chown=dev:dev src /home/dev/app/src
+RUN <<PIP_INSTALL_SRC
+# Install app source code in editable mode (-e) for local development.
+set -o errexit
+python -m pip install --disable-pip-version-check --compile \
+  --no-index \
+  --no-build-isolation \
+  -e /home/dev/app
+PIP_INSTALL_SRC
 
 ENV SECRETS_CONFIG=""
 
-ENV API_PORT=8100
-
-ENV SERVER_NAME="localhost"
-
+ENV CLIENT_SIDE_PUBLIC_PORT=38013
+ENV BIND=0.0.0.0
 
 RUN <<FILEWATCH_SUPPORT
 # Create scripts for file watching.
 set -o errexit
-cat <<'SLEEP_SH' > /usr/local/src/app/sleep.sh
+cat <<'SLEEP_SH' > /home/dev/app/sleep.sh
 #!/usr/bin/env sh
 set -o errexit
 
@@ -144,10 +186,15 @@ done
 SLEEP_SH
 chmod +x sleep.sh
 
-cat <<'RELOADER_SH' > /usr/local/src/app/reloader.sh
+cat <<'RELOADER_SH' > /home/dev/app/reloader.sh
 #!/usr/bin/env sh
 
 set -o errexit
+
+# VIRTUAL_ENV_BIN can be used by gunicorn.conf.py when running commands like
+# 'flask' and others that are part of the Python virtual environment.
+# Override any existing VIRTUAL_ENV_BIN here when running this locally.
+export VIRTUAL_ENV_BIN="${VIRTUAL_ENV}/bin"
 
 # Setting host to 0.0.0.0 (externally visible) to work with docker network.
 # The gunicorn command will use gunicorn.conf.py if it is in the same directory
@@ -157,7 +204,7 @@ set -o errexit
 # https://docs.gunicorn.org/en/stable/settings.html
 gunicorn \
     --config ./gunicorn.conf.py \
-    --chdir /usr/local/src/app \
+    --chdir /home/dev/app \
     --reload \
     --name site1_api_app \
     --access-logfile - \
@@ -170,4 +217,4 @@ chmod +x reloader.sh
 FILEWATCH_SUPPORT
 
 
-CMD ["/usr/local/src/app/reloader.sh"]
+CMD ["/home/dev/app/reloader.sh"]

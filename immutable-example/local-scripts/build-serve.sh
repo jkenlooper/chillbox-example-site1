@@ -2,7 +2,7 @@
 set -o errexit
 
 # This file in the parent directory immutable-example was generated from the immutable-make directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
-# Version: 0.0.1-alpha.1
+# Version: 0.0.1-alpha.2
 
 script_name="$(basename "$0")"
 script_dir="$(dirname "$(realpath "$0")")"
@@ -80,7 +80,9 @@ elif [ -n "$has_python3" ]; then
   # security checks.
   "
   set -x
-  python3 -m http.server --directory "/build/dist" --bind "$BIND" "$IMMUTABLE_EXAMPLE_PORT"
+  su dev -c "
+    python3 -m http.server --directory \"/build/dist\" --bind \"$BIND\" \"$IMMUTABLE_EXAMPLE_PORT\"
+  "
 else
   echo "ERROR $script_name: Unhandled condition." >&2
   exit 8

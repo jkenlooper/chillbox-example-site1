@@ -1,8 +1,8 @@
+MANIFEST.in
 README.md
-requirements.txt
-setup.py
 dep
-src
-secrets.sh
+pyproject.toml
+requirements.txt
 secrets.Dockerfile
-gunicorn.conf.py
+secrets.sh
+src

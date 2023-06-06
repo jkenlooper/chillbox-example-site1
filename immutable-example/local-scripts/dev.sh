@@ -2,7 +2,7 @@
 set -o errexit
 
 # This file in the parent directory immutable-example was generated from the immutable-make directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
-# Version: 0.0.1-alpha.1
+# Version: 0.0.1-alpha.2
 
 script_name="$(basename "$0")"
 script_dir="$(dirname "$(realpath "$0")")"
