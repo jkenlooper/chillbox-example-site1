@@ -12,12 +12,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Update python dependencies for api
-        run: ./api/update-dep.sh
-
-      - name: Update python dependencies for worker
-        run: ./worker/update-dep.sh
-
       - name: Create dist
         run: make dist
 
