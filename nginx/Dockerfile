@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.4.3
+# syntax=docker/dockerfile:1.5.2
 
 # This file was generated from the chillbox-site directory in https://github.com/jkenlooper/cookiecutters . Any modifications needed to this file should be done on that originating file.
 
