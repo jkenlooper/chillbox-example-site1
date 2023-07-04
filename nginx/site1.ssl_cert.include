@@ -1,6 +1,0 @@
-# Chillbox replaces this file. This is only a placeholder.
-listen 38010;
-
-## listen 443 ssl;
-## ssl_certificate /etc/letsencrypt/live/site1/fullchain.pem;
-## ssl_certificate_key /etc/letsencrypt/live/site1/privkey.pem;
